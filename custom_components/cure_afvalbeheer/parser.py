@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 
 from .logger import LOGGER
 
+from . import selectors
+
 
 class CureParser:
     """Parser voor Cure HTML-pagina's."""
@@ -19,14 +21,11 @@ class CureParser:
 
     def page_title(self) -> str:
         """Return the page title."""
-
-        title = ""
-        
-        if self._soup.title:
-            title = self._soup.title.get_text(strip=True)
-        
+    
+        title = selectors.page_title(self._soup)
+    
         LOGGER.debug("Page title: %s", title)
-        
+    
         return title
 
     def parse(self) -> list:
