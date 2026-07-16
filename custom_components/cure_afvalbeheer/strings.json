@@ -1,0 +1,10 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Cure Afvalbeheer",
+        "description": "Voeg de Cure Afvalbeheer integratie toe."
+      }
+    }
+  }
+}
