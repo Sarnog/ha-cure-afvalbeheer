@@ -6,6 +6,11 @@ from bs4 import BeautifulSoup
 
 from . import selectors
 from .logger import LOGGER
+from .models import OpeningHours
+from .parsers import (
+    is_opening_hours_line,
+    parse_opening_hours,
+)
 
 
 class CureParser:
@@ -32,17 +37,29 @@ class CureParser:
 
         return selectors.all_headings(self._soup)
 
+    def opening_hours_lines(self) -> list[str]:
+        """Return only valid opening hours lines."""
+
+        section = selectors.section_with_heading(
+            self._soup,
+            "Openingstijden",
+        )
+
+        if section is None:
+            return []
+
+        return [
+            line
+            for line in selectors.paragraphs(section)
+            if is_opening_hours_line(line)
+        ]
+
+    def opening_hours(self) -> list[OpeningHours]:
+        """Return parsed opening hours."""
+
+        return parse_opening_hours(self.opening_hours_lines())
+
     def parse(self) -> list:
         """Dummy parser."""
 
         return []
-
-    def table_count(self) -> int:
-        """Return the number of tables."""
-
-        return len(selectors.all_tables(self._soup))
-
-    def has_table(self) -> bool:
-        """Return True if at least one table exists."""
-
-        return selectors.first_table(self._soup) is not None

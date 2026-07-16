@@ -34,12 +34,6 @@ def main_content(soup: BeautifulSoup) -> Tag | None:
     return soup.find("main")
 
 
-def all_tables(soup: BeautifulSoup) -> list[Tag]:
-    """Return all tables."""
-
-    return soup.find_all("table")
-
-
 def all_headings(soup: BeautifulSoup) -> list[str]:
     """Return all heading text."""
 
@@ -54,12 +48,30 @@ def all_headings(soup: BeautifulSoup) -> list[str]:
     return result
 
 
-def first_table(soup: BeautifulSoup) -> Tag | None:
-    """Return the first table on the page."""
+def section_with_heading(
+    soup: BeautifulSoup,
+    heading: str,
+) -> Tag | None:
+    """Return the section that contains the given heading."""
 
-    tables = all_tables(soup)
+    for h2 in soup.find_all("h2"):
+        text = h2.get_text(" ", strip=True)
 
-    if not tables:
-        return None
+        if text == heading:
+            return h2.find_parent("section")
 
-    return tables[0]
+    return None
+
+
+def paragraphs(section: Tag) -> list[str]:
+    """Return all paragraph text."""
+
+    result: list[str] = []
+
+    for paragraph in section.find_all("p"):
+        text = paragraph.get_text(" ", strip=True)
+
+        if text:
+            result.append(text)
+
+    return result

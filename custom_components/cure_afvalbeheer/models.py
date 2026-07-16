@@ -1,34 +1,30 @@
-"""Datamodels voor Cure Afvalbeheer."""
+"""Models for Cure Afvalbeheer."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import time
+from dataclasses import dataclass
 
 
 @dataclass(slots=True)
 class OpeningHours:
-    """Openingstijden voor één dag."""
+    """Opening hours for one day."""
 
-    open_time: time | None
-    close_time: time | None
-    status: str = "closed"
+    day: str
+    opens: str | None
+    closes: str | None
+    closed: bool
 
 
 @dataclass(slots=True)
-class LocationHours:
-    """Alle informatie over één milieustraat."""
+class Location:
+    """One recycling centre."""
 
     name: str
-    address: str = ""
-    opening_hours: dict[str, OpeningHours] = field(default_factory=dict)
+    hours: list[OpeningHours]
 
 
 @dataclass(slots=True)
-class NewsItem:
-    """Nieuwsbericht dat invloed heeft op openingstijden."""
+class CureData:
+    """Complete parsed Cure data."""
 
-    title: str
-    link: str
-    description: str
-    published: str
+    locations: list[Location]
