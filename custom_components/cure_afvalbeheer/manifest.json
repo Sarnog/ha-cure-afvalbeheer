@@ -10,7 +10,9 @@
   "config_flow": true,
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "requirements": [],
+  "requirements": [
+    "beautifulsoup4>=4.13.0"
+  ],
   "loggers": [
     "custom_components.cure_afvalbeheer"
   ]
