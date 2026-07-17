@@ -40,3 +40,25 @@ async def test_fetch_html() -> None:
     html = await client.fetch_html("/")
 
     assert html == "<html></html>"
+
+
+@pytest.mark.anyio
+async def test_fetch_milieustraat() -> None:
+    """Test fetching and parsing the milieustraat page."""
+
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    session = Mock(spec=ClientSession)
+
+    client = CureApiClient(session)
+
+    client.fetch_html = AsyncMock(return_value=html)
+
+    result = await client.fetch_milieustraat()
+
+    assert isinstance(result, CureData)
+    assert len(result.locations) == 2
+
+    client.fetch_html.assert_awaited_once_with("/milieustraat/")

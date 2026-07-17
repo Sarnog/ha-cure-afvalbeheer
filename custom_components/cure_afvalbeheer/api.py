@@ -25,6 +25,13 @@ class CureApiClient:
 
             return await response.text()
 
+    async def fetch_milieustraat(self) -> CureData:
+        """Fetch and parse the milieustraat page."""
+
+        html = await self.fetch_html("/milieustraat/")
+
+        return self.parse_html(html)
+
     def parse_html(self, html: str) -> CureData:
         """Parse HTML into CureData."""
 
