@@ -2,7 +2,8 @@ from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from aiohttp import ClientSession
+from aiohttp import ClientResponseError, ClientSession
+from yarl import URL
 
 from custom_components.cure_afvalbeheer.api import CureApiClient
 from custom_components.cure_afvalbeheer.models import CureData
@@ -40,6 +41,27 @@ async def test_fetch_html() -> None:
     html = await client.fetch_html("/")
 
     assert html == "<html></html>"
+
+
+@pytest.mark.anyio
+async def test_fetch_html_raises_http_error() -> None:
+    """Test that HTTP errors are propagated."""
+
+    response = Mock()
+    response.raise_for_status.side_effect = ClientResponseError(
+        request_info=Mock(real_url=URL("https://example.com")),
+        history=(),
+        status=500,
+        message="Internal Server Error",
+    )
+
+    session = AsyncMock(spec=ClientSession)
+    session.get.return_value.__aenter__.return_value = response
+
+    client = CureApiClient(session)
+
+    with pytest.raises(ClientResponseError):
+        await client.fetch_html("/")
 
 
 @pytest.mark.anyio
