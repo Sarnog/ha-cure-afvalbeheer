@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Literal
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant, callback
@@ -24,7 +24,7 @@ from .const import (
 )
 from .coordinator import CureDataUpdateCoordinator
 from .models import Location
-from .schedule import ResolvedDay, resolve_day, resolve_upcoming
+from .schedule import ResolvedDay, next_open_close, resolve_day, resolve_upcoming
 
 PARALLEL_UPDATES = 0
 
@@ -49,6 +49,22 @@ async def async_setup_entry(
             CureLocationSensor(coordinator, entry, location.name, lookahead_days),
             CureReasonSensor(coordinator, entry, location.name, 0, "vandaag"),
             CureReasonSensor(coordinator, entry, location.name, 1, "morgen"),
+            CureNextTransitionSensor(
+                coordinator,
+                entry,
+                location.name,
+                lookahead_days,
+                "open",
+                "volgende open",
+            ),
+            CureNextTransitionSensor(
+                coordinator,
+                entry,
+                location.name,
+                lookahead_days,
+                "close",
+                "volgende gesloten",
+            ),
         ]
 
     @callback
@@ -220,6 +236,7 @@ class CureLocationSensor(_CureLocationEntity, SensorEntity):
         )
 
         return {
+            "address": location.address,
             "today": _serialize_day(upcoming[0], include_reason=False),
             "upcoming": [
                 _serialize_day(day, include_reason=True) for day in upcoming[1:]
@@ -269,3 +286,58 @@ class CureReasonSensor(_CureLocationEntity, SensorEntity):
         resolved = resolve_day(location, day, self.coordinator.data.notices)
 
         return resolved.reason or ""
+
+
+class CureNextTransitionSensor(_CureLocationEntity, SensorEntity):
+    """Sensor exposing the next time a location opens or closes.
+
+    Two instances are created per location (open/close) so the values are
+    directly usable in automations and dashboards, rather than buried in
+    another sensor's attributes.
+    """
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(
+        self,
+        coordinator: CureDataUpdateCoordinator,
+        entry: CureConfigEntry,
+        location_name: str,
+        lookahead_days: int,
+        transition: Literal["open", "close"],
+        label: str,
+    ) -> None:
+        """Initialise the sensor."""
+
+        super().__init__(coordinator, location_name)
+
+        self._lookahead_days = lookahead_days
+        self._transition = transition
+        self._attr_unique_id = (
+            f"{entry.entry_id}_{slugify(location_name)}_volgende_{transition}"
+        )
+        self._attr_name = f"{location_name} {label}"
+        self._attr_device_info = _device_info(coordinator, entry)
+
+    @property
+    def native_value(self) -> datetime | None:
+        """Return the next opening or closing timestamp."""
+
+        location = self._location
+
+        if location is None:
+            return None
+
+        now = dt_util.now()
+
+        upcoming = resolve_upcoming(
+            location,
+            now.date(),
+            self.coordinator.data.notices,
+            self._lookahead_days + 1,
+        )
+
+        next_open, next_close = next_open_close(upcoming, now)
+
+        return next_open if self._transition == "open" else next_close

@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, datetime
 
 from custom_components.cure_afvalbeheer.models import Location, Notice, OpeningHours
 from custom_components.cure_afvalbeheer.schedule import (
     hours_for_date,
+    next_open_close,
     resolve_day,
     resolve_upcoming,
     upcoming_hours,
@@ -16,6 +17,15 @@ _LOCATION = Location(
     name="Milieustraat Acht",
     address="Achtseweg Noord 41 5651 GG Eindhoven",
     hours=[_MONDAY, _HOLIDAY],
+)
+
+_MON_TUE_LOCATION = Location(
+    name="Milieustraat Acht",
+    address="Achtseweg Noord 41 5651 GG Eindhoven",
+    hours=[
+        _MONDAY,
+        OpeningHours(day=Weekday.TUESDAY, opens="08:30", closes="17:00", closed=False),
+    ],
 )
 
 
@@ -164,3 +174,36 @@ def test_resolve_upcoming_returns_resolved_days():
         date(2026, 7, 21),
         date(2026, 7, 22),
     ]
+
+
+def test_next_open_close_when_currently_open():
+    now = datetime(2026, 7, 20, 10, 0)  # Monday, within opening hours
+
+    upcoming = resolve_upcoming(_MON_TUE_LOCATION, now.date(), notices=[], days=2)
+
+    next_open, next_close = next_open_close(upcoming, now)
+
+    assert next_close == datetime(2026, 7, 20, 17, 0)
+    assert next_open == datetime(2026, 7, 21, 8, 30)
+
+
+def test_next_open_close_when_currently_closed():
+    now = datetime(2026, 7, 20, 18, 0)  # Monday, after closing time
+
+    upcoming = resolve_upcoming(_MON_TUE_LOCATION, now.date(), notices=[], days=2)
+
+    next_open, next_close = next_open_close(upcoming, now)
+
+    assert next_open == datetime(2026, 7, 21, 8, 30)
+    assert next_close == datetime(2026, 7, 21, 17, 0)
+
+
+def test_next_open_close_returns_none_outside_window():
+    now = datetime(2026, 7, 22, 10, 0)  # Wednesday, no hours defined at all
+
+    upcoming = resolve_upcoming(_LOCATION, now.date(), notices=[], days=1)
+
+    next_open, next_close = next_open_close(upcoming, now)
+
+    assert next_open is None
+    assert next_close is None

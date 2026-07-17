@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import MagicMock
 
 from freezegun import freeze_time
@@ -11,6 +11,7 @@ from custom_components.cure_afvalbeheer.models import (
 )
 from custom_components.cure_afvalbeheer.sensor import (
     CureLocationSensor,
+    CureNextTransitionSensor,
     CureReasonSensor,
 )
 from custom_components.cure_afvalbeheer.weekday import Weekday
@@ -70,6 +71,26 @@ def _build_reason_sensor(
     entry.entry_id = "test_entry"
 
     sensor = CureReasonSensor(coordinator, entry, _LOCATION.name, day_offset, label)
+    sensor.hass = MagicMock()
+
+    return sensor
+
+
+def _build_next_transition_sensor(
+    transition: str,
+    label: str,
+    lookahead_days: int = 5,
+    notices: list[Notice] | None = None,
+    locations: list[Location] | None = None,
+) -> CureNextTransitionSensor:
+    coordinator = _build_coordinator(notices, locations)
+
+    entry = MagicMock()
+    entry.entry_id = "test_entry"
+
+    sensor = CureNextTransitionSensor(
+        coordinator, entry, _LOCATION.name, lookahead_days, transition, label
+    )
     sensor.hass = MagicMock()
 
     return sensor
@@ -143,6 +164,15 @@ def test_extra_state_attributes_contains_today_and_upcoming():
     assert len(attributes["upcoming"]) == 5
     assert attributes["upcoming"][0]["date"] == "2026-07-21"
     assert attributes["upcoming"][0]["reason"] is None
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_extra_state_attributes_contains_address():
+    sensor = _build_sensor()
+
+    attributes = sensor.extra_state_attributes
+
+    assert attributes["address"] == "Achtseweg Noord 41 5651 GG Eindhoven"
 
 
 @freeze_time("2026-07-20 10:00:00")
@@ -259,3 +289,39 @@ def test_reason_sensor_unique_id_and_name():
 
     assert sensor.unique_id == "test_entry_milieustraat_acht_reden_morgen"
     assert sensor.name == "Milieustraat Acht reden morgen"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_next_transition_sensor_close_when_currently_open():
+    sensor = _build_next_transition_sensor("close", "volgende gesloten")
+
+    assert sensor.native_value.replace(tzinfo=None) == datetime(2026, 7, 20, 17, 0)
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_next_transition_sensor_open_when_currently_open_returns_tomorrow():
+    sensor = _build_next_transition_sensor("open", "volgende open")
+
+    assert sensor.native_value.replace(tzinfo=None) == datetime(2026, 7, 21, 8, 30)
+
+
+@freeze_time("2026-07-20 18:00:00")
+def test_next_transition_sensor_open_when_currently_closed():
+    sensor = _build_next_transition_sensor("open", "volgende open")
+
+    assert sensor.native_value.replace(tzinfo=None) == datetime(2026, 7, 21, 8, 30)
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_next_transition_sensor_unavailable_when_location_gone():
+    sensor = _build_next_transition_sensor("open", "volgende open", locations=[])
+
+    assert sensor.available is False
+    assert sensor.native_value is None
+
+
+def test_next_transition_sensor_unique_id_and_name():
+    sensor = _build_next_transition_sensor("close", "volgende gesloten")
+
+    assert sensor.unique_id == "test_entry_milieustraat_acht_volgende_close"
+    assert sensor.name == "Milieustraat Acht volgende gesloten"

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from .models import Location, Notice, OpeningHours
 from .weekday import Weekday
@@ -119,3 +119,47 @@ def resolve_upcoming(
         resolve_day(location, start + timedelta(days=offset), notices)
         for offset in range(days)
     ]
+
+
+def _combine(day: date, hhmm: str, now: datetime) -> datetime:
+    """Combine a date and an "HH:MM" string into a datetime like now."""
+
+    hour, minute = (int(part) for part in hhmm.split(":"))
+
+    return datetime(day.year, day.month, day.day, hour, minute, tzinfo=now.tzinfo)
+
+
+def next_open_close(
+    upcoming: list[ResolvedDay], now: datetime
+) -> tuple[datetime | None, datetime | None]:
+    """Return the next (next_open, next_close) timestamps in upcoming.
+
+    Both are computed independently of the current open/closed status: if
+    currently open, next_close is today's remaining closing time; if
+    currently closed, next_open is the next time it opens. Either value is
+    None if no such transition exists within the resolved window.
+    """
+
+    next_open: datetime | None = None
+    next_close: datetime | None = None
+
+    for day in upcoming:
+        if day.closed or day.opens is None or day.closes is None:
+            continue
+
+        if next_open is None:
+            opens_at = _combine(day.date, day.opens, now)
+
+            if opens_at > now:
+                next_open = opens_at
+
+        if next_close is None:
+            closes_at = _combine(day.date, day.closes, now)
+
+            if closes_at > now:
+                next_close = closes_at
+
+        if next_open is not None and next_close is not None:
+            break
+
+    return next_open, next_close

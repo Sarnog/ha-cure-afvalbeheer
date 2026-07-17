@@ -35,14 +35,20 @@ async def test_setup_entry_creates_sensors(hass, enable_custom_integrations) -> 
     registry = er.async_get(hass)
     entries = er.async_entries_for_config_entry(registry, entry.entry_id)
 
-    # 2 locations in the fixture x (1 status sensor + 2 reason sensors)
-    assert len(entries) == 6
+    # 2 locations in the fixture x (1 status + 2 reason + 2 next-transition)
+    assert len(entries) == 10
 
-    status_entries = [e for e in entries if "_reden_" not in e.unique_id]
+    status_entries = [
+        e
+        for e in entries
+        if "_reden_" not in e.unique_id and "_volgende_" not in e.unique_id
+    ]
     reason_entries = [e for e in entries if "_reden_" in e.unique_id]
+    next_transition_entries = [e for e in entries if "_volgende_" in e.unique_id]
 
     assert len(status_entries) == 2
     assert len(reason_entries) == 4
+    assert len(next_transition_entries) == 4
 
     for registry_entry in status_entries:
         state = hass.states.get(registry_entry.entity_id)
@@ -90,7 +96,7 @@ async def test_new_location_gets_entities_without_restart(
     registry = er.async_get(hass)
 
     before = er.async_entries_for_config_entry(registry, entry.entry_id)
-    assert len(before) == 6
+    assert len(before) == 10
 
     coordinator = entry.runtime_data
 
@@ -110,8 +116,8 @@ async def test_new_location_gets_entities_without_restart(
 
     after = er.async_entries_for_config_entry(registry, entry.entry_id)
 
-    # 3 locations now x 3 entities each, without a restart.
-    assert len(after) == 9
+    # 3 locations now x 5 entities each, without a restart.
+    assert len(after) == 15
 
 
 async def test_setup_survives_float_options_from_before_the_fix(
@@ -153,7 +159,7 @@ async def test_setup_survives_float_options_from_before_the_fix(
     status_entry = next(
         e
         for e in er.async_entries_for_config_entry(registry, entry.entry_id)
-        if "_reden_" not in e.unique_id
+        if "_reden_" not in e.unique_id and "_volgende_" not in e.unique_id
     )
     state = hass.states.get(status_entry.entity_id)
 
