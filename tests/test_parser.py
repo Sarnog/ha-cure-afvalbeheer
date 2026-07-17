@@ -79,3 +79,24 @@ def test_parse_locations():
     assert location.name == "Milieustraat Eindhoven"
     assert location.address is None
     assert len(location.hours) == 6
+
+
+def test_location_addresses():
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    parser = CureParser(html)
+
+    addresses = parser.location_addresses()
+
+    assert addresses == [
+        (
+            "Milieustraat Acht",
+            "Achtseweg Noord 41 5651 GG Eindhoven",
+        ),
+        (
+            "Milieustraat Lodewijkstraat",
+            "Lodewijkstraat 9 5652 AC Eindhoven",
+        ),
+    ]

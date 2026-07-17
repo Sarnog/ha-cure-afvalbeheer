@@ -77,6 +77,36 @@ class CureParser:
             hours=self.opening_hours(),
         )
 
+    def location_addresses(self) -> list[tuple[str, str]]:
+        """Parse the recycling centre addresses."""
+
+        section = selectors.address_section(self._soup)
+
+        if section is None:
+            return []
+
+        result: list[tuple[str, str]] = []
+
+        current_name: str | None = None
+
+        for element in section.find_all(["h3", "p"]):
+            if element.name == "h3":
+                current_name = element.get_text(strip=True)
+
+            elif element.name == "p" and current_name:
+                address = " ".join(element.stripped_strings)
+
+                result.append(
+                    (
+                        current_name,
+                        address,
+                    )
+                )
+
+                current_name = None
+
+        return result
+
     def parse_locations(self) -> list[Location]:
         """Parse all recycling centres."""
 

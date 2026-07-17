@@ -86,3 +86,14 @@ def location_name(soup: BeautifulSoup) -> str:
         return ""
 
     return heading.get_text(strip=True)
+
+
+def address_section(soup) -> Tag | None:
+    """Return the section containing the recycling centre addresses."""
+
+    heading = soup.find("h2", string="Adres Milieustraten Eindhoven")
+
+    if heading is None:
+        return None
+
+    return heading.parent
