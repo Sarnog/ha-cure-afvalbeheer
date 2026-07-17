@@ -123,7 +123,10 @@ door aan `notices.py`.
 `resolve_day`/`resolve_upcoming` passen daarnaast elke `Notice` toe die bij
 die datum en locatie hoort, en leveren een `ResolvedDay` met een
 `reason`-veld op zodat entiteiten kunnen laten zien *waarom* een dag afwijkt
-van het reguliere rooster.
+van het reguliere rooster. `next_open_close` loopt over een al opgeloste
+`ResolvedDay`-lijst en levert de eerstvolgende open- en sluitingstijd als
+`datetime` op (of `None` buiten het lookahead-venster) - pure functie, geen
+Home Assistant-imports, net als de rest van deze module.
 
 ---
 
@@ -136,6 +139,18 @@ gedetecteerd, geen manifest.json-wijziging nodig). Het serialiseert
 van de coordinator naar platte, expliciete dicts - geen redactie nodig, want
 niets hierin is gevoeliger dan de gekozen gemeente en de publieke
 openingstijden-info die al op de Cure-website staat.
+
+---
+
+# Repairs
+
+De coordinator maakt via `homeassistant.helpers.issue_registry` een
+zichtbare "reparatie"-melding aan (`async_create_issue`) als een geslaagde
+fetch geen enkele locatie oplevert - een betrouwbaar signaal dat de
+Cure-pagina-opmaak veranderd is en de parser niet meer aansluit. Zodra een
+volgende fetch weer locaties oplevert, wordt de melding automatisch
+verwijderd (`async_delete_issue`); dezelfde opruiming gebeurt expliciet bij
+het verwijderen/uitschakelen van de config entry.
 
 ---
 
@@ -176,6 +191,8 @@ Klaar, zonder de parser-architectuur te wijzigen:
 - tijdelijke sluitingen, hitteprotocol (v0.2.0) - geparst van de
   milieustraat-pagina zelf; een los RSS-feed bleek niet nodig
 - diagnostics, configureerbaar update-interval (v0.4.0)
+- adres-attribuut, reconfigure flow, repair-issue bij een kapotte parser,
+  `next_open`/`next_close`-sensoren (v0.5.0)
 
 Nog te ondersteunen:
 
@@ -304,6 +321,10 @@ relevant heading/body text via `selectors.py` and hands it to `notices.py`.
 `resolve_day`/`resolve_upcoming` additionally apply any `Notice`s that match
 that date and location, producing a `ResolvedDay` with a `reason` field so
 entities can show *why* a day deviates from the regular schedule.
+`next_open_close` walks an already-resolved `ResolvedDay` list and returns
+the next opening and closing time as a `datetime` (or `None` outside the
+lookahead window) - a pure function, no Home Assistant imports, same as the
+rest of this module.
 
 ---
 
@@ -315,6 +336,18 @@ manifest.json change needed). It serialises `entry.data`/`entry.options` and
 the coordinator's current locations/opening hours/notices into plain, explicit
 dicts - no redaction, since nothing here is more sensitive than the chosen
 municipality and public opening-hours info already on the Cure website.
+
+---
+
+# Repairs
+
+The coordinator creates a visible "repair" notification via
+`homeassistant.helpers.issue_registry` (`async_create_issue`) whenever a
+successful fetch returns no locations at all - a reliable signal that the
+Cure page markup has changed and the parser no longer matches it. As soon
+as a later fetch finds locations again, the notification is removed
+automatically (`async_delete_issue`); the same cleanup happens explicitly
+when the config entry is removed or unloaded.
 
 ---
 
@@ -355,6 +388,8 @@ Done, without changing the parser architecture:
 - temporary closures, heat protocol (v0.2.0) - parsed from the milieustraat
   page itself; no separate RSS feed turned out to be necessary
 - diagnostics, configurable update interval (v0.4.0)
+- address attribute, reconfigure flow, repair issue for a broken parser,
+  `next_open`/`next_close` sensors (v0.5.0)
 
 Still to support:
 

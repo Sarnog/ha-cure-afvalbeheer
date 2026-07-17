@@ -62,6 +62,25 @@ er is geen los RSS-abonnement nodig.
 - Update-interval instelbaar via de Options Flow (5-1440 minuten, standaard
   60), naast het aantal vooruitkijkdagen.
 
+### v0.5.0
+
+- Adres van de milieustraat is nu ook als `address`-attribuut op de
+  statussensor beschikbaar (was al geparst, maar nergens getoond).
+- Reconfigure flow: wijzig de gemeente van een bestaande integratie via
+  **Instellingen → Apparaten & Diensten → Cure Afvalbeheer → Configureren**,
+  zonder de integratie te verwijderen en opnieuw toe te voegen. Kies je een
+  andere gemeente, dan vraagt de flow eerst expliciet om bevestiging — alle
+  sensoren en hun geschiedenis voor de huidige gemeente worden namelijk
+  vervangen door sensoren voor de nieuwe.
+- Twee nieuwe sensoren per milieustraat, **"volgende open"** en **"volgende
+  gesloten"** (timestamp), zodat de eerstvolgende statuswijziging direct
+  bruikbaar is in automatiseringen en op het dashboard, in plaats van
+  verstopt in een attribuut.
+- Zichtbare "reparatie"-melding in Home Assistant (**Instellingen →
+  Systeem → Reparaties**) als de parser plotseling geen enkele milieustraat
+  meer vindt, bijvoorbeeld door een wijziging in de opmaak van de
+  Cure-website.
+
 Zie ROADMAP.md voor wat er nog gepland staat.
 
 ## Installatie
@@ -84,13 +103,18 @@ pagina; er is geen aparte configuratie per locatie nodig.
 
 ## Gebruik in het dashboard
 
-Elke milieustraat krijgt drie sensoren:
+Elke milieustraat krijgt vijf sensoren:
 
-- **`sensor.<device>_<milieustraat>`** — status `open`/`closed`, met `today`
-  en `upcoming` (de ingestelde vooruitkijkdagen) als attributen.
+- **`sensor.<device>_<milieustraat>`** — status `open`/`closed`, met
+  `address`, `today` en `upcoming` (de ingestelde vooruitkijkdagen) als
+  attributen.
 - **`sensor.<device>_<milieustraat>_reden_vandaag`** en
   **`..._reden_morgen`** — leeg (`""`) als er geen afwijking is, anders de
   reden (`hitteprotocol`, `verbouwing`, `werkzaamheden`).
+- **`sensor.<device>_<milieustraat>_volgende_open`** en
+  **`..._volgende_close`** — timestamp van de eerstvolgende keer dat de
+  milieustraat open respectievelijk dicht gaat, binnen het ingestelde
+  vooruitkijkvenster (anders `unknown`).
 
 Zoek je eigen entity-ID's op via **Ontwikkelaarshulpmiddelen → Staten** — de
 onderstaande voorbeelden gebruiken die van "Milieustraat Acht" in Eindhoven
@@ -310,6 +334,22 @@ separate RSS subscription is needed.
 - Update interval configurable via the Options Flow (5-1440 minutes,
   default 60), alongside the forecast-days setting.
 
+### v0.5.0
+
+- The milieustraat's address is now also available as an `address`
+  attribute on the status sensor (it was already parsed, but never shown).
+- Reconfigure flow: change the municipality of an existing integration via
+  **Settings → Devices & Services → Cure Afvalbeheer → Configure**, without
+  removing and re-adding it. Picking a different municipality first asks
+  for explicit confirmation — all sensors and their history for the
+  current municipality are replaced by sensors for the new one.
+- Two new sensors per milieustraat, **"next open"** and **"next close"**
+  (timestamp), so the next status change is directly usable in automations
+  and on the dashboard instead of buried in an attribute.
+- A visible repair notification in Home Assistant (**Settings → System →
+  Repairs**) if the parser suddenly finds no milieustraat at all anymore,
+  for example due to a change in the Cure website's markup.
+
 See ROADMAP.md for what is still planned.
 
 ## Installation
@@ -332,14 +372,19 @@ from the page; no separate per-location configuration is needed.
 
 ## Using it on your dashboard
 
-Each milieustraat gets three sensors:
+Each milieustraat gets five sensors:
 
 - **`sensor.<device>_<milieustraat>`** — status `open`/`closed`, with
-  `today` and `upcoming` (the configured forecast days) as attributes.
+  `address`, `today` and `upcoming` (the configured forecast days) as
+  attributes.
 - **`sensor.<device>_<milieustraat>_reden_vandaag`** and
   **`..._reden_morgen`** — empty (`""`) if there is no deviation, otherwise
   the reason (`hitteprotocol`, `verbouwing`, `werkzaamheden` — these values
   are always Dutch, since that is what the integration itself produces).
+- **`sensor.<device>_<milieustraat>_volgende_open`** and
+  **`..._volgende_close`** — timestamp of the next time the milieustraat
+  opens and closes respectively, within the configured forecast window
+  (otherwise `unknown`).
 
 Look up your own entity IDs via **Developer Tools → States** — the examples
 below use those of "Milieustraat Acht" in Eindhoven

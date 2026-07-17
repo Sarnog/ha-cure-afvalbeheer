@@ -152,6 +152,33 @@ publicatie via HACS en de Home Assistant Integration Quality Scale volgt.
 
 ---
 
+## Samenwerkingsafspraken
+
+Deze afspraken zijn ontstaan tijdens het samenwerken aan dit project en
+staan hier zodat ze niet verloren gaan, ongeacht welke sessie of welk
+geheugen er ooit aan dit project werkt:
+
+- Reageer altijd in het Nederlands en stel vragen in het Nederlands.
+- Houd alle `*.md`-bestanden in de repository bilingual (NL + EN) bij, bij
+  elke wijziging - niet alleen wanneer daar expliciet om gevraagd wordt.
+- Geen destructieve deletes: locaties/entiteiten die verdwijnen worden
+  `unavailable`, nooit actief verwijderd in code. Home Assistants eigen
+  wees-entiteit-afhandeling biedt de gebruiker na een herstart zelf een
+  verwijderoptie.
+- Releaseritueel bij elke versie: versie bumpen in zowel `manifest.json` als
+  `pyproject.toml`, ruff + de volledige pytest-suite laten slagen,
+  per-onderdeel committen (elke commit laat de repo werkend achter),
+  annotated git tag `vX.Y.Z` aanmaken, pushen (commits + tags), en een
+  echte GitHub Release aanmaken via de REST API (er is geen `gh`-CLI
+  beschikbaar in deze omgeving) - het credential-token nooit naar de
+  output printen, altijd in een shell-variabele opvangen en direct weer
+  wissen na gebruik.
+- `ROADMAP.md` bijwerken bij elke release: een nieuwe "vX.Y.Z (klaar/done)"-
+  sectie toevoegen, en verwerkte ideeën weghalen uit
+  "Toekomstideeën"/"Future ideas".
+
+---
+
 # AI Development Instructions
 
 This project follows the Home Assistant Development Guidelines.
@@ -297,3 +324,30 @@ Each layer has a single responsibility.
 ## Goal
 
 Create a high-quality Home Assistant custom integration that is suitable for publication via HACS and follows the Home Assistant Integration Quality Scale.
+
+---
+
+## Collaboration agreements
+
+These agreements emerged while working together on this project and are
+recorded here so they are never lost, regardless of which session or which
+memory ever works on this project:
+
+- Always respond in Dutch, and ask questions in Dutch.
+- Keep every `*.md` file in the repository bilingual (NL + EN) on every
+  change - not only when explicitly asked to.
+- No destructive deletes: locations/entities that disappear become
+  `unavailable`, never actively removed in code. Home Assistant's own
+  orphaned-entity handling gives the user a removal option after a
+  restart.
+- Release ritual for every version: bump the version in both
+  `manifest.json` and `pyproject.toml`, get ruff and the full pytest suite
+  passing, commit per logical concern (each commit leaves the repo
+  working), create an annotated git tag `vX.Y.Z`, push (commits + tags),
+  and create a real GitHub Release via the REST API (no `gh` CLI is
+  available in this environment) - never print the credential token to
+  output, always capture it into a shell variable and clear it right
+  after use.
+- Update `ROADMAP.md` on every release: add a new "vX.Y.Z (klaar/done)"
+  section, and remove the ideas that were implemented from "Toekomstideeën"/
+  "Future ideas".

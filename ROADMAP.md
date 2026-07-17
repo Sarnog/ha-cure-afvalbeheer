@@ -117,23 +117,27 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 ---
 
+# v0.5.0 (klaar)
+
+- [x] Adres als attribuut (`address`) op de status-sensor - `Location.address`
+      werd al geparst, maar was nergens in Home Assistant zichtbaar
+- [x] Reconfigure flow: gemeente van een bestaande config entry wijzigen
+      zonder verwijderen + opnieuw toevoegen. Bij een daadwerkelijke
+      wijziging vraagt de flow eerst expliciet om bevestiging, omdat alle
+      sensoren en hun geschiedenis van de huidige gemeente vervangen worden
+- [x] Repair-issue bij een kapotte parser (`homeassistant.helpers
+      .issue_registry`): een geslaagde fetch die geen enkele locatie meer
+      oplevert toont nu een zichtbare "reparatie"-melding in de Home
+      Assistant-UI, in plaats van alleen een debug-logregel
+- [x] Twee nieuwe sensoren per milieustraat, "volgende open" en "volgende
+      gesloten" (`next_open`/`next_close`, timestamp-device-class) - stond
+      al in het allereerste ChatGPT-ontwerp ("Derived"-sectie) maar was
+      nooit gebouwd
+
+---
+
 # Toekomstideeën (nog niet gepland, ter overweging)
 
-- **Repair-issues bij een kapotte parser** - als Cure de pagina-opmaak ooit
-  zo wijzigt dat er geen locaties/openingstijden meer worden gevonden, blijft
-  dat nu beperkt tot een debug-logregel. Een zichtbare "reparatie"-melding in
-  de Home Assistant-UI (via `homeassistant.helpers.issue_registry`) zou veel
-  behulpzamer zijn en sluit aan bij de eigen AGENTS.md-wens: niet hoeven
-  gissen wat er mis is.
-- **`next_change`/`next_open`/`next_close`-achtige info** - stond al in het
-  allereerste ontwerp (de oorspronkelijke ChatGPT-verkenning, "Derived"-
-  sectie) maar is nooit gebouwd: alleen de actuele open/gesloten-status en
-  vandaag/morgen bestaan, niet "wanneer verandert dit precies" verder dan dat.
-- **Adres als attribuut/entiteit** - `Location.address` wordt al geparst maar
-  nergens in Home Assistant getoond. Kleine, makkelijke aanvulling.
-- **Reconfigure flow** - de gemeente van een bestaande config entry wijzigen
-  zonder verwijderen + opnieuw toevoegen (`async_step_reconfigure`, moderne
-  HA-conventie).
 - **Langetermijnstatistieken** - hoe vaak/hoe lang een milieustraat de
   afgelopen periode gesloten was, via HA's recorder/statistics.
 - Kalender-stijl output, een handmatige refresh-actie, reparaties/
@@ -262,23 +266,27 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 ---
 
+# v0.5.0 (done)
+
+- [x] Address as an attribute (`address`) on the status sensor -
+      `Location.address` was already parsed but never shown anywhere in
+      Home Assistant
+- [x] Reconfigure flow: change the municipality of an existing config entry
+      without removing and re-adding it. On an actual change, the flow
+      first asks for explicit confirmation, since all sensors and their
+      history for the current municipality get replaced
+- [x] Repair issue for a broken parser (`homeassistant.helpers
+      .issue_registry`): a successful fetch that returns no locations at
+      all now shows a visible "repair" notification in the Home Assistant
+      UI, instead of just a debug log line
+- [x] Two new sensors per milieustraat, "next open" and "next close"
+      (`next_open`/`next_close`, timestamp device class) - already present
+      in the very first ChatGPT design ("Derived" section) but never built
+
+---
+
 # Future ideas (not yet planned, for consideration)
 
-- **Repair issues on a broken parser** - if Cure ever changes the page
-  markup so that no locations/opening hours are found anymore, this
-  currently stays limited to a debug log line. A visible "repair"
-  notification in the Home Assistant UI (via
-  `homeassistant.helpers.issue_registry`) would be far more helpful, and
-  matches AGENTS.md's own wish: never having to guess what went wrong.
-- **`next_change`/`next_open`/`next_close`-style info** - already present in
-  the very first design (the original ChatGPT exploration, "Derived"
-  section) but never built: only the current open/closed status and
-  today/tomorrow exist, not "exactly when does this change" beyond that.
-- **Address as an attribute/entity** - `Location.address` is already parsed
-  but never shown anywhere in Home Assistant. Small, easy addition.
-- **Reconfigure flow** - change the municipality of an existing config entry
-  without removing and re-adding it (`async_step_reconfigure`, a modern HA
-  convention).
 - **Long-term statistics** - how often/how long a milieustraat was closed
   over a given period, via HA's recorder/statistics.
 - Calendar-style output, a manual refresh action, repairs/accepted waste
