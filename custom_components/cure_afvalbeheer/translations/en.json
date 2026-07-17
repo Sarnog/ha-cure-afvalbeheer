@@ -3,11 +3,23 @@
     "step": {
       "user": {
         "title": "Cure Afvalbeheer",
-        "description": "Add the Cure Afvalbeheer integration."
+        "description": "Add the Cure Afvalbeheer integration.",
+        "data": {
+          "municipality": "Municipality"
+        }
       }
     },
     "abort": {
-      "already_configured": "Cure Afvalbeheer is already configured."
+      "already_configured": "Cure Afvalbeheer is already configured for this municipality."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "lookahead_days": "Number of days to look ahead"
+        }
+      }
     }
   },
   "entity": {

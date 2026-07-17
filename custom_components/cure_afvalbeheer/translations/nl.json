@@ -3,11 +3,23 @@
     "step": {
       "user": {
         "title": "Cure Afvalbeheer",
-        "description": "Voeg de Cure Afvalbeheer integratie toe."
+        "description": "Voeg de Cure Afvalbeheer integratie toe.",
+        "data": {
+          "municipality": "Gemeente"
+        }
       }
     },
     "abort": {
-      "already_configured": "Cure Afvalbeheer is al geconfigureerd."
+      "already_configured": "Cure Afvalbeheer is al geconfigureerd voor deze gemeente."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "lookahead_days": "Aantal dagen vooruit"
+        }
+      }
     }
   },
   "entity": {
