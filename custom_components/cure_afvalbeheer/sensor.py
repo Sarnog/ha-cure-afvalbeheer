@@ -22,8 +22,8 @@ from .const import (
     NAME,
 )
 from .coordinator import CureDataUpdateCoordinator
-from .models import Location, OpeningHours
-from .schedule import hours_for_date, upcoming_hours
+from .models import Location
+from .schedule import ResolvedDay, resolve_day, resolve_upcoming
 
 PARALLEL_UPDATES = 0
 
@@ -45,16 +45,15 @@ async def async_setup_entry(
     )
 
 
-def _serialize_hours(hours: OpeningHours | None) -> dict[str, Any]:
-    """Serialise opening hours for use as an entity attribute."""
-
-    if hours is None:
-        return {"closed": True, "opens": None, "closes": None}
+def _serialize_day(day: ResolvedDay) -> dict[str, Any]:
+    """Serialise a resolved day for use as an entity attribute."""
 
     return {
-        "closed": hours.closed,
-        "opens": hours.opens,
-        "closes": hours.closes,
+        "date": day.date.isoformat(),
+        "closed": day.closed,
+        "opens": day.opens,
+        "closes": day.closes,
+        "reason": day.reason,
     }
 
 
@@ -112,17 +111,14 @@ class CureLocationSensor(CoordinatorEntity[CureDataUpdateCoordinator], SensorEnt
             return None
 
         now = dt_util.now()
-        today_hours = hours_for_date(location, now.date())
+        today = resolve_day(location, now.date(), self.coordinator.data.notices)
 
-        if today_hours is None or today_hours.closed:
-            return "closed"
-
-        if today_hours.opens is None or today_hours.closes is None:
+        if today.closed or today.opens is None or today.closes is None:
             return "closed"
 
         current_time = now.strftime("%H:%M")
 
-        if today_hours.opens <= current_time <= today_hours.closes:
+        if today.opens <= current_time <= today.closes:
             return "open"
 
         return "closed"
@@ -138,15 +134,14 @@ class CureLocationSensor(CoordinatorEntity[CureDataUpdateCoordinator], SensorEnt
 
         today = dt_util.now().date()
 
-        upcoming = upcoming_hours(location, today, self._lookahead_days + 1)
+        upcoming = resolve_upcoming(
+            location,
+            today,
+            self.coordinator.data.notices,
+            self._lookahead_days + 1,
+        )
 
         return {
-            "today": {
-                "date": today.isoformat(),
-                **_serialize_hours(upcoming[0][1]),
-            },
-            "upcoming": [
-                {"date": day.isoformat(), **_serialize_hours(hours)}
-                for day, hours in upcoming[1:]
-            ],
+            "today": _serialize_day(upcoming[0]),
+            "upcoming": [_serialize_day(day) for day in upcoming[1:]],
         }
