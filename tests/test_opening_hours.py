@@ -5,9 +5,9 @@ from custom_components.cure_afvalbeheer.weekday import Weekday
 
 
 def test_opening_hours():
-    html = Path(
-        "tests/fixtures/milieustraat_eindhoven.html"
-    ).read_text(encoding="utf-8")
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
 
     parser = CureParser(html)
 

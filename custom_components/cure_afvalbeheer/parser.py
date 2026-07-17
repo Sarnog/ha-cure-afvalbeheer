@@ -6,7 +6,11 @@ from bs4 import BeautifulSoup
 
 from . import selectors
 from .logger import LOGGER
-from .models import CureData, OpeningHours
+from .models import (
+    CureData,
+    Location,
+    OpeningHours,
+)
 from .parsers import (
     is_opening_hours_line,
     parse_opening_hours,
@@ -37,6 +41,11 @@ class CureParser:
 
         return selectors.all_headings(self._soup)
 
+    def location_name(self) -> str:
+        """Return the location name."""
+
+        return selectors.location_name(self._soup)
+
     def opening_hours_lines(self) -> list[str]:
         """Return only valid opening hours lines."""
 
@@ -59,14 +68,20 @@ class CureParser:
 
         return parse_opening_hours(self.opening_hours_lines())
 
+    def parse_location(self) -> Location:
+        """Parse one recycling centre."""
+
+        return Location(
+            name=self.location_name(),
+            address=None,
+            hours=self.opening_hours(),
+        )
+
     def parse(self) -> CureData:
         """Parse the complete page."""
 
         return CureData(
-            locations=[],
+            locations=[
+                self.parse_location(),
+            ],
         )
-
-    def location_name(self) -> str:
-        """Return the location name."""
-
-        return selectors.location_name(self._soup)
