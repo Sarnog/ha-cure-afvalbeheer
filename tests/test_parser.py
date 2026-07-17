@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from custom_components.cure_afvalbeheer.parser import CureParser
@@ -116,3 +117,29 @@ def test_location_addresses_falls_back_to_page_title_without_h3():
             "Industriepark 8 5663 PG Geldrop",
         ),
     ]
+
+
+def test_notices_finds_heat_protocol_and_scoped_closure():
+    """The Eindhoven fixture contains both a site-wide heat protocol
+    banner and a closure notice naming Lodewijkstraat specifically."""
+
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    parser = CureParser(html)
+    locations = parser.parse_locations()
+
+    notices = parser.notices(locations, today=date(2026, 7, 10))
+
+    assert len(notices) == 2
+
+    heat_protocol = next(n for n in notices if n.reason == "hitteprotocol")
+    assert heat_protocol.opens == "08:00"
+    assert heat_protocol.closes == "14:00"
+    assert heat_protocol.ends == date(2026, 7, 16)
+    assert heat_protocol.location_hint is None
+
+    closure = next(n for n in notices if n.reason == "verbouwing")
+    assert closure.closed is True
+    assert closure.location_hint == "Milieustraat Lodewijkstraat"

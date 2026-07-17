@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from bs4 import BeautifulSoup
 
 from . import selectors
@@ -9,12 +11,36 @@ from .logger import LOGGER
 from .models import (
     CureData,
     Location,
+    Notice,
     OpeningHours,
 )
+from .notices import parse_closure_notice, parse_heat_protocol_notice
 from .parsers import (
     is_opening_hours_line,
     parse_opening_hours,
 )
+
+
+def _location_hint_for(heading: str, locations: list[Location]) -> str | None:
+    """Return the single location name mentioned in heading, if any.
+
+    Only the heading is checked, not the full notice body: a renovation
+    notice for one location often mentions another as the alternative to
+    visit instead, which would otherwise be picked up as a false match.
+    """
+
+    heading_lower = heading.lower()
+
+    matches = [
+        location.name
+        for location in locations
+        if location.name.removeprefix("Milieustraat ").strip().lower() in heading_lower
+    ]
+
+    if len(matches) == 1:
+        return matches[0]
+
+    return None
 
 
 class CureParser:
@@ -126,9 +152,51 @@ class CureParser:
 
         return locations
 
+    def notices(
+        self,
+        locations: list[Location],
+        today: date | None = None,
+    ) -> list[Notice]:
+        """Parse temporary deviations (heat protocol, closures)."""
+
+        if today is None:
+            today = date.today()
+
+        result: list[Notice] = []
+
+        heading = selectors.news_heading(self._soup)
+
+        if heading:
+            heat_protocol = parse_heat_protocol_notice(heading, today)
+
+            if heat_protocol is not None:
+                result.append(heat_protocol)
+
+        closure_section = selectors.closure_notice_section(self._soup)
+
+        if closure_section is not None:
+            closure_heading = closure_section.find("h2")
+
+            if closure_heading is not None:
+                closure_heading_text = closure_heading.get_text(strip=True)
+                body_text = closure_section.get_text(" ", strip=True)
+
+                closure = parse_closure_notice(closure_heading_text, body_text, today)
+
+                if closure is not None:
+                    closure.location_hint = _location_hint_for(
+                        closure_heading_text, locations
+                    )
+                    result.append(closure)
+
+        return result
+
     def parse(self) -> CureData:
         """Parse the complete page."""
 
+        locations = self.parse_locations()
+
         return CureData(
-            locations=self.parse_locations(),
+            locations=locations,
+            notices=self.notices(locations),
         )
