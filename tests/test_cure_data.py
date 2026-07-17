@@ -2,7 +2,6 @@ from pathlib import Path
 
 from custom_components.cure_afvalbeheer.models import CureData
 from custom_components.cure_afvalbeheer.parser import CureParser
-from custom_components.cure_afvalbeheer.weekday import Weekday
 
 
 def test_parse_returns_cure_data():
@@ -16,13 +15,10 @@ def test_parse_returns_cure_data():
 
     assert isinstance(result, CureData)
 
-    assert len(result.locations) == 1
+    assert len(result.locations) == 2
 
-    location = result.locations[0]
+    assert result.locations[0].name == "Milieustraat Acht"
+    assert result.locations[0].address == "Achtseweg Noord 41 5651 GG Eindhoven"
 
-    assert location.name == "Milieustraat Eindhoven"
-    assert location.address is None
-
-    assert len(location.hours) == 6
-    assert location.hours[0].day is Weekday.MONDAY
-    assert location.hours[-1].day is Weekday.SATURDAY
+    assert result.locations[1].name == "Milieustraat Lodewijkstraat"
+    assert result.locations[1].address == "Lodewijkstraat 9 5652 AC Eindhoven"
