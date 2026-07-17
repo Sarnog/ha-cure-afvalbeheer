@@ -4,12 +4,15 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import aiohttp_client
+from homeassistant.helpers import issue_registry as ir
 
 from .api import CureApiClient
 from .const import (
     CONF_MUNICIPALITY,
     CONF_UPDATE_INTERVAL_MINUTES,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
+    DOMAIN,
+    ISSUE_NO_LOCATIONS_FOUND,
 )
 from .coordinator import CureDataUpdateCoordinator
 
@@ -61,6 +64,8 @@ async def async_unload_entry(
     entry: CureConfigEntry,
 ) -> bool:
     """Unload Cure Afvalbeheer."""
+
+    ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_NO_LOCATIONS_FOUND}_{entry.entry_id}")
 
     return await hass.config_entries.async_unload_platforms(
         entry,
