@@ -104,6 +104,19 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 ---
 
+# v0.4.1 (klaar)
+
+- [x] Bugfix: Home Assistant's `NumberSelector` geeft altijd een `float`
+      terug (ongeacht step/mode), waardoor het wijzigen van het aantal
+      vooruitkijkdagen of het update-interval elke sensor liet crashen
+      (`TypeError: 'float' object cannot be interpreted as an integer`).
+      Beide waarden worden nu expliciet naar `int` omgezet, zowel bij het
+      opslaan als bij het uitlezen - een al opgeslagen `float`-waarde
+      herstelt zichzelf dus vanzelf, zonder het formulier opnieuw in te
+      hoeven dienen.
+
+---
+
 # Toekomstideeën (nog niet gepland, ter overweging)
 
 - **Repair-issues bij een kapotte parser** - als Cure de pagina-opmaak ooit
@@ -234,6 +247,18 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
       and the coordinator's current data, for bug reports
 - [x] Configurable update interval (Options Flow, alongside the existing
       forecast-window setting)
+
+---
+
+# v0.4.1 (done)
+
+- [x] Bugfix: Home Assistant's `NumberSelector` always returns a `float`
+      (regardless of step/mode), so changing the forecast window or the
+      update interval crashed every sensor
+      (`TypeError: 'float' object cannot be interpreted as an integer`).
+      Both values are now explicitly coerced to `int`, both when stored and
+      when read back - an already-stored float value self-heals
+      automatically, without needing to resubmit the form.
 
 ---
 
