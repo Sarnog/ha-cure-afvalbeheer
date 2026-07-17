@@ -34,9 +34,17 @@ er is geen los RSS-abonnement nodig.
 ### v0.2.0
 
 - Tijdelijke afwijkingen (hitteprotocol, verbouwing, sluiting) worden uit de
-  pagina zelf geparst en passen de sensor-status/attributen automatisch aan,
-  inclusief een `reason`-attribuut dat aangeeft waarom er wordt afgeweken van
-  het reguliere rooster.
+  pagina zelf geparst en passen de sensor-status/attributen automatisch aan.
+
+### v0.3.0
+
+- Twee losse "reden"-sensoren per milieustraat (vandaag/morgen) in plaats van
+  een verstopt attribuut, zodat je automatiseringen al één dag vooruit kunt
+  laten waarschuwen voor een afwijking.
+- Nieuwe milieustraten die Cure aan een gemeentepagina toevoegt verschijnen
+  automatisch, zonder herstart. Verdwijnt een milieustraat permanent, dan
+  worden de bijbehorende sensoren `unavailable`; blijft die na een herstart
+  nog steeds weg, dan biedt Home Assistant zelf een verwijderoptie aan.
 
 Zie ROADMAP.md voor wat er nog gepland staat.
 
@@ -57,6 +65,63 @@ Via HACS:
 
 Milieustraat-locaties binnen een gemeente worden automatisch ontdekt uit de
 pagina; er is geen aparte configuratie per locatie nodig.
+
+## Gebruik in het dashboard
+
+Elke milieustraat krijgt drie sensoren:
+
+- **`sensor.<device>_<milieustraat>`** — status `open`/`closed`, met `today`
+  en `upcoming` (de ingestelde vooruitkijkdagen) als attributen.
+- **`sensor.<device>_<milieustraat>_reden_vandaag`** en
+  **`..._reden_morgen`** — leeg (`""`) als er geen afwijking is, anders de
+  reden (`hitteprotocol`, `verbouwing`, `werkzaamheden`).
+
+Zoek je eigen entity-ID's op via **Ontwikkelaarshulpmiddelen → Staten** — de
+onderstaande voorbeelden gebruiken die van "Milieustraat Acht" in Eindhoven
+(`sensor.cure_afvalbeheer_eindhoven_milieustraat_acht`) ter illustratie.
+
+### Voorbeeld: markdown-kaart
+
+```yaml
+type: markdown
+content: >
+  ## Milieustraat Acht
+
+  {% set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' %}
+  {% set vandaag = state_attr(sensor, 'today') %}
+  **Vandaag:** {% if vandaag.closed %}Gesloten{% else %}Open van
+  {{ vandaag.opens }} tot {{ vandaag.closes }}{% endif %}
+
+  ### Komende dagen
+  {% for dag in state_attr(sensor, 'upcoming') %}
+  - {{ dag.date }}: {% if dag.closed %}Gesloten{% else %}{{ dag.opens }} - {{ dag.closes }}{% endif %}{% if dag.reason %} _({{ dag.reason }})_{% endif %}
+  {% endfor %}
+```
+
+### Voorbeeld: automatisering (waarschuw al één dag vooraf)
+
+Dit is precies waarom er een aparte "reden morgen"-sensor bestaat: de
+melding komt binnen zodra Cure de wijziging aankondigt, niet pas op de dag
+zelf.
+
+```yaml
+automation:
+  - alias: "Cure: waarschuwing voor afwijking morgen"
+    trigger:
+      - trigger: state
+        entity_id: sensor.cure_afvalbeheer_eindhoven_milieustraat_acht_reden_morgen
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.from_state.state == '' and trigger.to_state.state != '' }}
+    action:
+      - action: notify.notify
+        data:
+          title: "Milieustraat Acht"
+          message: >
+            Morgen wijkt de milieustraat af van de normale openingstijden:
+            {{ trigger.to_state.state }}.
+```
 
 ## Architectuur
 
