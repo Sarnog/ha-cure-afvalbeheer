@@ -88,12 +88,19 @@ def location_name(soup: BeautifulSoup) -> str:
     return heading.get_text(strip=True)
 
 
-def address_section(soup) -> Tag | None:
-    """Return the section containing the recycling centre addresses."""
+def address_section(soup: BeautifulSoup) -> Tag | None:
+    """Return the section containing the recycling centre addresses.
 
-    heading = soup.find("h2", string="Adres Milieustraten Eindhoven")
+    The heading is singular ("Adres Milieustraat <Gemeente>") for
+    municipalities with one location and plural ("Adres Milieustraten
+    <Gemeente>") for municipalities with more than one. Dutch pluralises
+    "straat" as "straten" (not "straaten"), so "Milieustraat" is not a
+    prefix of "Milieustraten" - match on "Milieustra", the part shared by
+    both, rather than an exact, municipality-specific string.
+    """
 
-    if heading is None:
-        return None
+    for heading in soup.find_all("h2"):
+        if heading.get_text(strip=True).startswith("Adres Milieustra"):
+            return heading.parent
 
-    return heading.parent
+    return None
