@@ -14,13 +14,17 @@ HTTP Client
 Selectors
     │
     ▼
-Parser
+Parser ──uses──> notices.py (free-text deviation parsing)
     │
     ▼
-Models
+Models (incl. Notice)
     │
     ▼
 Coordinator
+    │
+    ▼
+schedule.py (resolve_day / resolve_upcoming: applies Notices to the
+             regular weekly schedule)
     │
     ▼
 Entities
@@ -94,6 +98,29 @@ Entities only read data from the coordinator.
 
 ---
 
+# Notices
+
+`notices.py` extracts temporary deviations (heat protocol, closures,
+renovations) from free Dutch text found on the milieustraat page.
+
+Contains no BeautifulSoup/HTML code and no Home Assistant imports - it only
+takes plain strings and returns a `Notice` (or `None` when the text does not
+match a recognised pattern). `parser.py` is the only caller: it selects the
+relevant heading/body text via `selectors.py` and hands it to `notices.py`.
+
+---
+
+# Schedule
+
+`schedule.py` resolves the opening hours for a specific date.
+
+`hours_for_date`/`upcoming_hours` read only the regular weekly schedule.
+`resolve_day`/`resolve_upcoming` additionally apply any `Notice`s that match
+that date and location, producing a `ResolvedDay` with a `reason` field so
+entities can show *why* a day deviates from the regular schedule.
+
+---
+
 # Logging
 
 Use `logger.py`.
@@ -125,13 +152,13 @@ Search in this order:
 
 # Future Extensions
 
-The architecture must support:
+Done, without changing the parser architecture:
 
-- RSS news
-- temporary closures
-- heat protocol
-- multiple municipalities
+- multiple municipalities (v0.1.0)
+- temporary closures, heat protocol (v0.2.0) - parsed from the milieustraat
+  page itself; no separate RSS feed turned out to be necessary
+
+Still to support:
+
 - additional sensors
 - diagnostics
-
-Without changing the parser architecture.

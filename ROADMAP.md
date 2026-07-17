@@ -10,13 +10,14 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 ---
 
-# Version 1.0
+# v0.1.0 (done)
 
 ## Core
 
 - [x] GitHub repository
 - [x] HACS structure
-- [x] Config Flow
+- [x] Config Flow (per-municipality selection: Eindhoven, Valkenswaard, Geldrop-Mierlo)
+- [x] Options Flow (configurable forecast window)
 - [x] Logging
 - [x] Parser framework
 - [x] HTML fixture
@@ -24,56 +25,52 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 ## Parser
 
-- [ ] Parse all Eindhoven recycling centres
-- [ ] Parse regular opening hours
-- [ ] Parse addresses
-- [ ] Parse today's opening hours
-- [ ] Parse next opening/closing change
+- [x] Parse all recycling centres for every supported municipality
+- [x] Parse regular opening hours
+- [x] Parse addresses
+- [x] Parse today's opening hours
+- [x] Parse the upcoming N days
 
 ## Coordinator
 
-- [ ] HTTP client
-- [ ] DataUpdateCoordinator
-- [ ] Update interval
-- [ ] Error handling
-- [ ] Retry logic
+- [x] HTTP client
+- [x] DataUpdateCoordinator
+- [x] Update interval
+- [x] Error handling
+- [x] Retry logic (via DataUpdateCoordinator)
 
 ## Home Assistant
 
-- [ ] Device
-- [ ] Sensor
-- [ ] DeviceInfo
+- [x] Device (one per municipality config entry)
+- [x] Sensor (one per milieustraat)
+- [x] DeviceInfo
 - [ ] Diagnostics
 
----
+## Other
 
-# Version 1.1
-
-- [ ] RSS integration
-- [ ] Temporary closures
-- [ ] Heat protocol
-- [ ] Maintenance notices
-- [ ] Additional attributes
+- [x] Home Assistant brand assets prepared for `home-assistant/brands`
 
 ---
 
-# Version 1.2
+# v0.2.0 (done)
 
-- [ ] Dashboard helper attributes
-- [ ] Markdown friendly output
+- [x] Heat protocol detection (adjusted hours + end date)
+- [x] Temporary closures / renovations (explicit closing date, or a list of
+      specific closed dates)
+- [x] Deviation reason exposed as a sensor attribute
+- [x] No separate RSS feed needed - deviations are parsed from the same
+      milieustraat page that is already fetched
+
+---
+
+# Next up
+
+- [ ] Diagnostics
+- [ ] Calendar-style output
 - [ ] Manual refresh action
-- [ ] Calendar style output
-
----
-
-# Version 2.0
-
-- [ ] Multiple Cure municipalities
-- [ ] Additional entities
-- [ ] Repairs
-- [ ] Accepted waste types
-- [ ] Maps
-- [ ] Navigation
+- [ ] Configurable update interval
+- [ ] Repairs / accepted waste types / maps / navigation
+- [ ] Multiple languages
 
 ---
 
@@ -82,5 +79,3 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 - [ ] Diagnostics download
 - [ ] Repairs history
 - [ ] Statistics
-- [ ] Configurable update interval
-- [ ] Multiple languages
