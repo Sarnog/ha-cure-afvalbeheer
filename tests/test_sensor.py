@@ -9,7 +9,10 @@ from custom_components.cure_afvalbeheer.models import (
     Notice,
     OpeningHours,
 )
-from custom_components.cure_afvalbeheer.sensor import CureLocationSensor
+from custom_components.cure_afvalbeheer.sensor import (
+    CureLocationSensor,
+    CureReasonSensor,
+)
 from custom_components.cure_afvalbeheer.weekday import Weekday
 
 _LOCATION = Location(
@@ -22,18 +25,51 @@ _LOCATION = Location(
     ],
 )
 
+_LOCATION_LIST = [_LOCATION]
+
+
+def _build_coordinator(
+    notices: list[Notice] | None = None, locations: list[Location] | None = None
+) -> MagicMock:
+    coordinator = MagicMock()
+    coordinator.data = CureData(
+        locations=_LOCATION_LIST if locations is None else locations,
+        notices=notices or [],
+    )
+    coordinator.municipality = "eindhoven"
+    coordinator.last_update_success = True
+
+    return coordinator
+
 
 def _build_sensor(
-    lookahead_days: int = 5, notices: list[Notice] | None = None
+    lookahead_days: int = 5,
+    notices: list[Notice] | None = None,
+    locations: list[Location] | None = None,
 ) -> CureLocationSensor:
-    coordinator = MagicMock()
-    coordinator.data = CureData(locations=[_LOCATION], notices=notices or [])
-    coordinator.municipality = "eindhoven"
+    coordinator = _build_coordinator(notices, locations)
 
     entry = MagicMock()
     entry.entry_id = "test_entry"
 
     sensor = CureLocationSensor(coordinator, entry, _LOCATION.name, lookahead_days)
+    sensor.hass = MagicMock()
+
+    return sensor
+
+
+def _build_reason_sensor(
+    day_offset: int,
+    label: str,
+    notices: list[Notice] | None = None,
+    locations: list[Location] | None = None,
+) -> CureReasonSensor:
+    coordinator = _build_coordinator(notices, locations)
+
+    entry = MagicMock()
+    entry.entry_id = "test_entry"
+
+    sensor = CureReasonSensor(coordinator, entry, _LOCATION.name, day_offset, label)
     sensor.hass = MagicMock()
 
     return sensor
@@ -102,11 +138,11 @@ def test_extra_state_attributes_contains_today_and_upcoming():
         "closed": False,
         "opens": "08:30",
         "closes": "17:00",
-        "reason": None,
     }
 
     assert len(attributes["upcoming"]) == 5
     assert attributes["upcoming"][0]["date"] == "2026-07-21"
+    assert attributes["upcoming"][0]["reason"] is None
 
 
 @freeze_time("2026-07-20 10:00:00")
@@ -120,7 +156,9 @@ def test_extra_state_attributes_respects_configured_lookahead_days():
 
 
 @freeze_time("2026-07-20 10:00:00")
-def test_extra_state_attributes_includes_reason_for_active_notice():
+def test_extra_state_attributes_today_has_no_reason_key():
+    """reason moved to its own CureReasonSensor; today stays closed-only."""
+
     closure = Notice(
         reason="verbouwing",
         title="Let op! Wordt verbouwd",
@@ -133,4 +171,91 @@ def test_extra_state_attributes_includes_reason_for_active_notice():
     attributes = sensor.extra_state_attributes
 
     assert attributes["today"]["closed"] is True
-    assert attributes["today"]["reason"] == "verbouwing"
+    assert "reason" not in attributes["today"]
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_extra_state_attributes_upcoming_still_has_reason():
+    closure = Notice(
+        reason="verbouwing",
+        title="Let op! Wordt verbouwd",
+        closed=True,
+        dates=[date(2026, 7, 21)],
+    )
+
+    sensor = _build_sensor(notices=[closure])
+
+    attributes = sensor.extra_state_attributes
+
+    assert attributes["upcoming"][0]["date"] == "2026-07-21"
+    assert attributes["upcoming"][0]["reason"] == "verbouwing"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_location_sensor_available_when_location_present():
+    sensor = _build_sensor()
+
+    assert sensor.available is True
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_location_sensor_unavailable_when_location_gone():
+    sensor = _build_sensor(locations=[])
+
+    assert sensor.available is False
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_reason_sensor_today_empty_string_without_notice():
+    sensor = _build_reason_sensor(day_offset=0, label="vandaag")
+
+    assert sensor.native_value == ""
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_reason_sensor_today_reports_active_reason():
+    closure = Notice(
+        reason="verbouwing",
+        title="Let op!",
+        closed=True,
+        dates=[date(2026, 7, 20)],
+    )
+
+    sensor = _build_reason_sensor(day_offset=0, label="vandaag", notices=[closure])
+
+    assert sensor.native_value == "verbouwing"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_reason_sensor_tomorrow_reports_next_day_reason():
+    closure = Notice(
+        reason="werkzaamheden",
+        title="Let op!",
+        closed=True,
+        dates=[date(2026, 7, 21)],
+    )
+
+    today_sensor = _build_reason_sensor(
+        day_offset=0, label="vandaag", notices=[closure]
+    )
+    tomorrow_sensor = _build_reason_sensor(
+        day_offset=1, label="morgen", notices=[closure]
+    )
+
+    assert today_sensor.native_value == ""
+    assert tomorrow_sensor.native_value == "werkzaamheden"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_reason_sensor_unavailable_when_location_gone():
+    sensor = _build_reason_sensor(day_offset=0, label="vandaag", locations=[])
+
+    assert sensor.available is False
+    assert sensor.native_value is None
+
+
+def test_reason_sensor_unique_id_and_name():
+    sensor = _build_reason_sensor(day_offset=1, label="morgen")
+
+    assert sensor.unique_id == "test_entry_milieustraat_acht_reden_morgen"
+    assert sensor.name == "Milieustraat Acht reden morgen"

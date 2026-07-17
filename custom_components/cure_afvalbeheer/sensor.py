@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -39,25 +40,120 @@ async def async_setup_entry(
 
     lookahead_days = entry.options.get(CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS)
 
-    async_add_entities(
-        CureLocationSensor(coordinator, entry, location.name, lookahead_days)
-        for location in coordinator.data.locations
-    )
+    known_locations: set[str] = set()
+
+    def _entities_for(location: Location) -> list[SensorEntity]:
+        return [
+            CureLocationSensor(coordinator, entry, location.name, lookahead_days),
+            CureReasonSensor(coordinator, entry, location.name, 0, "vandaag"),
+            CureReasonSensor(coordinator, entry, location.name, 1, "morgen"),
+        ]
+
+    @callback
+    def _add_new_locations() -> None:
+        """Add entities for any location not seen before.
+
+        Cure occasionally adds a new recycling centre to a municipality
+        page. Re-checking on every coordinator update means a new
+        location gets its entities without requiring a restart.
+        """
+
+        new_locations = [
+            location
+            for location in coordinator.data.locations
+            if location.name not in known_locations
+        ]
+
+        if not new_locations:
+            return
+
+        known_locations.update(location.name for location in new_locations)
+
+        entities: list[SensorEntity] = []
+
+        for location in new_locations:
+            entities.extend(_entities_for(location))
+
+        async_add_entities(entities)
+
+    _add_new_locations()
+
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_locations))
 
 
-def _serialize_day(day: ResolvedDay) -> dict[str, Any]:
+def _serialize_day(day: ResolvedDay, *, include_reason: bool) -> dict[str, Any]:
     """Serialise a resolved day for use as an entity attribute."""
 
-    return {
+    result = {
         "date": day.date.isoformat(),
         "closed": day.closed,
         "opens": day.opens,
         "closes": day.closes,
-        "reason": day.reason,
     }
 
+    if include_reason:
+        result["reason"] = day.reason
 
-class CureLocationSensor(CoordinatorEntity[CureDataUpdateCoordinator], SensorEntity):
+    return result
+
+
+def _device_info(
+    coordinator: CureDataUpdateCoordinator, entry: CureConfigEntry
+) -> DeviceInfo:
+    """Return the device a location's entities should be grouped under."""
+
+    municipality_name = MUNICIPALITIES.get(
+        coordinator.municipality, coordinator.municipality
+    )
+
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=f"{NAME} {municipality_name}",
+        manufacturer=MANUFACTURER,
+    )
+
+
+class _CureLocationEntity(CoordinatorEntity[CureDataUpdateCoordinator]):
+    """Shared behaviour for entities tied to one Cure location.
+
+    A location can disappear from the municipality page (e.g. a
+    recycling centre closes permanently). Rather than deleting anything
+    ourselves - a transient fetch hiccup could otherwise wipe an entity's
+    history for no reason - such entities simply become unavailable. If
+    the location is still gone on the next restart, async_setup_entry
+    won't recreate it, and Home Assistant's own entity platform then
+    offers the user a way to remove the resulting orphaned entity.
+    """
+
+    def __init__(
+        self,
+        coordinator: CureDataUpdateCoordinator,
+        location_name: str,
+    ) -> None:
+        """Initialise the entity."""
+
+        super().__init__(coordinator)
+
+        self._location_name = location_name
+
+    @property
+    def _location(self) -> Location | None:
+        """Return the current Location data for this entity."""
+
+        for location in self.coordinator.data.locations:
+            if location.name == self._location_name:
+                return location
+
+        return None
+
+    @property
+    def available(self) -> bool:
+        """Return whether the location still exists on the page."""
+
+        return super().available and self._location is not None
+
+
+class CureLocationSensor(_CureLocationEntity, SensorEntity):
     """Sensor representing one Cure recycling centre."""
 
     _attr_has_entity_name = True
@@ -74,32 +170,12 @@ class CureLocationSensor(CoordinatorEntity[CureDataUpdateCoordinator], SensorEnt
     ) -> None:
         """Initialise the sensor."""
 
-        super().__init__(coordinator)
+        super().__init__(coordinator, location_name)
 
-        self._location_name = location_name
         self._lookahead_days = lookahead_days
         self._attr_unique_id = f"{entry.entry_id}_{slugify(location_name)}"
         self._attr_name = location_name
-
-        municipality_name = MUNICIPALITIES.get(
-            coordinator.municipality, coordinator.municipality
-        )
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=f"{NAME} {municipality_name}",
-            manufacturer=MANUFACTURER,
-        )
-
-    @property
-    def _location(self) -> Location | None:
-        """Return the current Location data for this sensor."""
-
-        for location in self.coordinator.data.locations:
-            if location.name == self._location_name:
-                return location
-
-        return None
+        self._attr_device_info = _device_info(coordinator, entry)
 
     @property
     def native_value(self) -> str | None:
@@ -142,6 +218,52 @@ class CureLocationSensor(CoordinatorEntity[CureDataUpdateCoordinator], SensorEnt
         )
 
         return {
-            "today": _serialize_day(upcoming[0]),
-            "upcoming": [_serialize_day(day) for day in upcoming[1:]],
+            "today": _serialize_day(upcoming[0], include_reason=False),
+            "upcoming": [
+                _serialize_day(day, include_reason=True) for day in upcoming[1:]
+            ],
         }
+
+
+class CureReasonSensor(_CureLocationEntity, SensorEntity):
+    """Sensor exposing the deviation reason for one specific day.
+
+    Two instances are created per location (today/tomorrow) so an
+    automation can act a day ahead of a change instead of only once it
+    has already taken effect.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: CureDataUpdateCoordinator,
+        entry: CureConfigEntry,
+        location_name: str,
+        day_offset: int,
+        label: str,
+    ) -> None:
+        """Initialise the sensor."""
+
+        super().__init__(coordinator, location_name)
+
+        self._day_offset = day_offset
+        self._attr_unique_id = (
+            f"{entry.entry_id}_{slugify(location_name)}_reden_{label}"
+        )
+        self._attr_name = f"{location_name} reden {label}"
+        self._attr_device_info = _device_info(coordinator, entry)
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the deviation reason, or an empty string if none."""
+
+        location = self._location
+
+        if location is None:
+            return None
+
+        day = dt_util.now().date() + timedelta(days=self._day_offset)
+        resolved = resolve_day(location, day, self.coordinator.data.notices)
+
+        return resolved.reason or ""
