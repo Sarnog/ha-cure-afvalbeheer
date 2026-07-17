@@ -44,11 +44,10 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 - [x] Device (one per municipality config entry)
 - [x] Sensor (one per milieustraat)
 - [x] DeviceInfo
-- [ ] Diagnostics
 
 ## Other
 
-- [x] Home Assistant brand assets prepared for `home-assistant/brands`
+- [x] Home Assistant brand assets prepared (later superseded, see v0.3.1)
 
 ---
 
@@ -63,19 +62,69 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 ---
 
-# Next up
+# v0.3.0 (done)
 
-- [ ] Diagnostics
-- [ ] Calendar-style output
-- [ ] Manual refresh action
-- [ ] Configurable update interval
-- [ ] Repairs / accepted waste types / maps / navigation
-- [ ] Multiple languages
+- [x] Dedicated reason sensors per milieustraat, today and tomorrow, so an
+      automation can warn a day ahead of a change instead of only once it
+      has already taken effect
+- [x] `reason` removed from the status sensor's `today` attribute (now
+      redundant); kept in each `upcoming[]` entry
+- [x] New milieustraten that Cure adds to a municipality page are detected
+      and get their entities automatically, without a restart
+- [x] Locations that permanently disappear become `unavailable` instead of
+      anything being deleted in code; if still gone after a restart, Home
+      Assistant's own entity platform offers the user a removal option for
+      the resulting orphaned entity
+
+---
+
+# v0.3.1 (done)
+
+- [x] Brand logo served locally via the integration's own `brand/` folder
+      (Home Assistant 2026.3+ Brands Proxy API) - no `home-assistant/brands`
+      pull request needed anymore, superseding the v0.1.0 approach
+- [x] Restyled markdown card example in README (centered heading, a
+      blinking dark-orange `mdi:alert-outline` icon via `card-mod`, a
+      deviation-only day list that falls back to the full forecast when
+      nothing deviates)
+
+---
+
+# v0.4.0 (in progress)
+
+- [ ] Diagnostics (`diagnostics.py`): downloadable dump of the config entry
+      and the coordinator's current data, for bug reports
+- [ ] Configurable update interval (Options Flow, alongside the existing
+      forecast-window setting)
+
+---
+
+# Toekomstideeën (nog niet gepland, ter overweging)
+
+- **Repair-issues bij een kapotte parser** — als Cure de pagina-opmaak ooit
+  zo wijzigt dat er geen locaties/openingstijden meer gevonden worden, blijft
+  dat nu beperkt tot een debug-logregel. Een zichtbare "reparatie"-melding in
+  de Home Assistant-UI (via `homeassistant.helpers.issue_registry`) zou veel
+  behulpzamer zijn en sluit aan bij de eigen AGENTS.md-wens: niet hoeven
+  gissen wat er mis is.
+- **`next_change`/`next_open`/`next_close`-achtige info** — stond al in het
+  allereerste ontwerp (de oorspronkelijke ChatGPT-verkenning, "Derived"-
+  sectie) maar is nooit gebouwd: alleen de actuele open/gesloten-status en
+  vandaag/morgen bestaan, niet "wanneer verandert dit precies" verder dan dat.
+- **Adres als attribuut/entiteit** — `Location.address` wordt al geparst
+  maar nergens in Home Assistant getoond. Kleine, makkelijke aanvulling.
+- **Reconfigure flow** — de gemeente van een bestaande config entry wijzigen
+  zonder verwijderen + opnieuw toevoegen (`async_step_reconfigure`, moderne
+  HA-conventie).
+- **Langetermijnstatistieken** — hoe vaak/hoe lang een milieustraat de
+  afgelopen periode gesloten was, via HA's recorder/statistics.
+- Calendar-style output, een handmatige refresh-actie, reparaties/
+  geaccepteerde afvalsoorten/kaarten/navigatie, meerdere talen — zie eerdere
+  overwegingen; nog geen concrete aanpak voor gekozen.
 
 ---
 
 # Nice to have
 
-- [ ] Diagnostics download
 - [ ] Repairs history
-- [ ] Statistics
+- [ ] Diagnostics download automation/scripting
