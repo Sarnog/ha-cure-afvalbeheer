@@ -1,8 +1,10 @@
 from datetime import date
 
-from custom_components.cure_afvalbeheer.models import Location, OpeningHours
+from custom_components.cure_afvalbeheer.models import Location, Notice, OpeningHours
 from custom_components.cure_afvalbeheer.schedule import (
     hours_for_date,
+    resolve_day,
+    resolve_upcoming,
     upcoming_hours,
 )
 from custom_components.cure_afvalbeheer.weekday import Weekday
@@ -49,3 +51,116 @@ def test_upcoming_hours_returns_requested_number_of_days():
     assert len(result) == 6
     assert result[0] == (monday, _MONDAY)
     assert result[-1][0] == date(2026, 7, 25)
+
+
+def test_resolve_day_falls_back_to_regular_schedule_without_notices():
+    monday = date(2026, 7, 20)
+
+    result = resolve_day(_LOCATION, monday, notices=[])
+
+    assert result.opens == "08:30"
+    assert result.closes == "17:00"
+    assert result.closed is False
+    assert result.reason is None
+
+
+def test_resolve_day_applies_heat_protocol_within_range():
+    monday = date(2026, 7, 20)
+
+    heat_protocol = Notice(
+        reason="hitteprotocol",
+        title="Hitteprotocol",
+        closed=False,
+        opens="08:00",
+        closes="14:00",
+        ends=date(2026, 7, 20),
+    )
+
+    result = resolve_day(_LOCATION, monday, notices=[heat_protocol])
+
+    assert result.opens == "08:00"
+    assert result.closes == "14:00"
+    assert result.reason == "hitteprotocol"
+
+
+def test_resolve_day_ignores_heat_protocol_outside_range():
+    tuesday_after_end = date(2026, 7, 21)
+
+    heat_protocol = Notice(
+        reason="hitteprotocol",
+        title="Hitteprotocol",
+        closed=False,
+        opens="08:00",
+        closes="14:00",
+        ends=date(2026, 7, 20),
+    )
+
+    result = resolve_day(_LOCATION, tuesday_after_end, notices=[heat_protocol])
+
+    assert result.reason is None
+
+
+def test_resolve_day_applies_dated_closure_only_on_listed_dates():
+    closure = Notice(
+        reason="werkzaamheden",
+        title="Let op!",
+        closed=True,
+        dates=[date(2026, 7, 20)],
+    )
+
+    on_date = resolve_day(_LOCATION, date(2026, 7, 20), notices=[closure])
+    off_date = resolve_day(_LOCATION, date(2026, 7, 21), notices=[closure])
+
+    assert on_date.closed is True
+    assert on_date.reason == "werkzaamheden"
+    assert off_date.reason is None
+
+
+def test_resolve_day_ignores_closure_for_a_different_location():
+    closure = Notice(
+        reason="verbouwing",
+        title="Let op!",
+        closed=True,
+        location_hint="Milieustraat Lodewijkstraat",
+    )
+
+    result = resolve_day(_LOCATION, date(2026, 7, 20), notices=[closure])
+
+    assert result.reason is None
+    assert result.closed is False
+
+
+def test_resolve_day_prefers_closure_over_hours_adjustment():
+    monday = date(2026, 7, 20)
+
+    heat_protocol = Notice(
+        reason="hitteprotocol",
+        title="Hitteprotocol",
+        closed=False,
+        opens="08:00",
+        closes="14:00",
+        ends=monday,
+    )
+    closure = Notice(
+        reason="verbouwing",
+        title="Let op!",
+        closed=True,
+        dates=[monday],
+    )
+
+    result = resolve_day(_LOCATION, monday, notices=[heat_protocol, closure])
+
+    assert result.closed is True
+    assert result.reason == "verbouwing"
+
+
+def test_resolve_upcoming_returns_resolved_days():
+    monday = date(2026, 7, 20)
+
+    result = resolve_upcoming(_LOCATION, monday, notices=[], days=3)
+
+    assert [day.date for day in result] == [
+        date(2026, 7, 20),
+        date(2026, 7, 21),
+        date(2026, 7, 22),
+    ]
