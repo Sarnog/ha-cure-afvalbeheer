@@ -180,7 +180,7 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 - [x] Parse regular opening hours
 - [x] Parse addresses
 - [x] Parse today's opening hours
-- [x] Parse the upcoming N days
+- [x] Parse the upcoming days
 
 ## Coordinator
 
