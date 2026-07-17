@@ -7,10 +7,22 @@
         "data": {
           "municipality": "Municipality"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Cure Afvalbeheer",
+        "description": "Change the municipality for this integration.",
+        "data": {
+          "municipality": "Municipality"
+        }
+      },
+      "reconfigure_confirm": {
+        "title": "Confirm municipality change",
+        "description": "You are about to change the municipality from {current} to {new}. All sensors and their history for {current} will be replaced by sensors for {new}. Are you sure?"
       }
     },
     "abort": {
-      "already_configured": "Cure Afvalbeheer is already configured for this municipality."
+      "already_configured": "Cure Afvalbeheer is already configured for this municipality.",
+      "reconfigure_successful": "The municipality has been updated."
     }
   },
   "options": {
@@ -31,6 +43,12 @@
           "closed": "Closed"
         }
       }
+    }
+  },
+  "issues": {
+    "no_locations_found": {
+      "title": "No milieustraten found anymore",
+      "description": "The integration could no longer find any milieustraat on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. Please report this via the integration's issue tracker and attach the diagnostics download."
     }
   }
 }

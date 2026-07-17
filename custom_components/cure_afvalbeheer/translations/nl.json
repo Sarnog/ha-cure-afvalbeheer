@@ -7,10 +7,22 @@
         "data": {
           "municipality": "Gemeente"
         }
+      },
+      "reconfigure": {
+        "title": "Cure Afvalbeheer opnieuw configureren",
+        "description": "Wijzig de gemeente van deze integratie.",
+        "data": {
+          "municipality": "Gemeente"
+        }
+      },
+      "reconfigure_confirm": {
+        "title": "Gemeente wijzigen bevestigen",
+        "description": "Je staat op het punt de gemeente te wijzigen van {current} naar {new}. Alle sensoren en hun geschiedenis voor {current} worden vervangen door sensoren voor {new}. Weet je het zeker?"
       }
     },
     "abort": {
-      "already_configured": "Cure Afvalbeheer is al geconfigureerd voor deze gemeente."
+      "already_configured": "Cure Afvalbeheer is al geconfigureerd voor deze gemeente.",
+      "reconfigure_successful": "De gemeente is bijgewerkt."
     }
   },
   "options": {
@@ -31,6 +43,12 @@
           "closed": "Gesloten"
         }
       }
+    }
+  },
+  "issues": {
+    "no_locations_found": {
+      "title": "Geen milieustraten meer gevonden",
+      "description": "De integratie kon geen enkele milieustraat meer vinden op de Cure-website voor {municipality}. Dit duidt meestal op een wijziging in de website-opmaak waardoor de parser niet meer werkt. Meld dit alsjeblieft via de issue tracker van de integratie en voeg de diagnostics-download toe."
     }
   }
 }
