@@ -85,18 +85,33 @@ onderstaande voorbeelden gebruiken die van "Milieustraat Acht" in Eindhoven
 ```yaml
 type: markdown
 content: >
-  ## Milieustraat Acht
-
   {% set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' %}
   {% set vandaag = state_attr(sensor, 'today') %}
-  **Vandaag:** {% if vandaag.closed %}Gesloten{% else %}Open van
-  {{ vandaag.opens }} tot {{ vandaag.closes }}{% endif %}
+  {% set upcoming = state_attr(sensor, 'upcoming') %}
+  {% set afwijkingen = upcoming | selectattr('reason') | list %}
 
-  ### Komende dagen
-  {% for dag in state_attr(sensor, 'upcoming') %}
-  - {{ dag.date }}: {% if dag.closed %}Gesloten{% else %}{{ dag.opens }} - {{ dag.closes }}{% endif %}{% if dag.reason %} _({{ dag.reason }})_{% endif %}
+  <h2 style="text-align: center;">Milieustraat Acht</h2>
+
+  **Vandaag:** {% if vandaag.closed %}Gesloten{% else %}Geopend tot {{ vandaag.closes }}{% endif %}
+
+  {% if afwijkingen %}
+  <ha-icon icon="mdi:alert" style="color: darkorange;"></ha-icon> **Afwijkingen voor de komende dagen:**
+  {% else %}
+  **Openingstijden de komende dagen:**
+  {% endif %}
+
+  {% for dag in upcoming %}
+  - {{ dag.date }}: {% if dag.closed %}Gesloten{% else %}Open van {{ dag.opens }} tot {{ dag.closes }}{% endif %}{% if dag.reason %} — {{ dag.reason }}{% endif %}
   {% endfor %}
 ```
+
+De kop staat gecentreerd (zelfde stijl als een `##`-kop, alleen via `<h2>` zodat
+`text-align` werkt binnen de markdown-kaart). De tweede kop wisselt
+automatisch tussen "Afwijkingen voor de komende dagen" (met een
+waarschuwingsdriehoek, `mdi:alert`, in donkeroranje) en "Openingstijden de
+komende dagen" — afhankelijk van of er in de ingestelde vooruitkijkperiode een
+`reason` voorkomt. De lijst daaronder toont per dag de tijden, met de reden
+erachter zodra die dag afwijkt.
 
 ### Voorbeeld: automatisering (waarschuw al één dag vooraf)
 
