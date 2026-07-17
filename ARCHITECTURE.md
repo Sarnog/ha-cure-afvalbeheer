@@ -121,6 +121,17 @@ entities can show *why* a day deviates from the regular schedule.
 
 ---
 
+# Diagnostics
+
+`diagnostics.py` exposes `async_get_config_entry_diagnostics`, Home
+Assistant's standard downloadable-diagnostics entry point (auto-detected, no
+manifest.json change needed). It serialises `entry.data`/`entry.options` and
+the coordinator's current locations/opening hours/notices into plain, explicit
+dicts - no redaction, since nothing here is more sensitive than the chosen
+municipality and public opening-hours info already on the Cure website.
+
+---
+
 # Logging
 
 Use `logger.py`.
@@ -157,8 +168,8 @@ Done, without changing the parser architecture:
 - multiple municipalities (v0.1.0)
 - temporary closures, heat protocol (v0.2.0) - parsed from the milieustraat
   page itself; no separate RSS feed turned out to be necessary
+- diagnostics, configurable update interval (v0.4.0)
 
 Still to support:
 
-- additional sensors
-- diagnostics
+- additional sensors (see ROADMAP.md's "Toekomstideeën" for concrete ideas)
