@@ -82,36 +82,63 @@ onderstaande voorbeelden gebruiken die van "Milieustraat Acht" in Eindhoven
 
 ### Voorbeeld: markdown-kaart
 
+Vereist de HACS-frontendkaart **[card-mod](https://github.com/thomasloven/lovelace-card-mod)**
+— HA's markdown-kaart filtert het `style`-attribuut uit HTML (sanitizer), dus
+de opmaak (kop centreren, icoon-kleur/animatie) wordt hier via `card_mod`
+toegepast in plaats van inline.
+
+Pas **twee plekken** aan naar je eigen situatie:
+1. De entity-ID op de regel `{%- set sensor = ... -%}` — vervang
+   `<sensor.milieustraat_naam>` door je eigen sensor (op te zoeken via
+   Ontwikkelaarshulpmiddelen → Staten).
+2. De tekst tussen `<h2>` en `</h2>` — vervang "Milieustraat Naam" door de
+   naam die je op de kaart wilt zien staan.
+
 ```yaml
 type: markdown
-content: >
-  {% set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' %}
-  {% set vandaag = state_attr(sensor, 'today') %}
-  {% set upcoming = state_attr(sensor, 'upcoming') %}
-  {% set afwijkingen = upcoming | selectattr('reason') | list %}
+content: |
+  {#- Bronsensor en attributen ophalen -#}
+  {%- set sensor = '<sensor.milieustraat_naam>' -%}
+  {%- set vandaag = state_attr(sensor, 'today') -%}
+  {%- set upcoming = state_attr(sensor, 'upcoming') or [] -%}
+  {#- Alleen dagen met een 'reason' gelden als afwijking -#}
+  {%- set afwijkingen = upcoming | selectattr('reason') | list -%}
+  {#- Zijn er afwijkingen? Toon die. Zo niet: toon alle komende dagen -#}
+  {%- set lijst = afwijkingen if afwijkingen else upcoming -%}
+  <h2>Milieustraat Naam</h2>
 
-  <h2 style="text-align: center;">Milieustraat Acht</h2>
+  **Vandaag:** {% if vandaag is none %}Onbekend{% elif vandaag.closed %}Gesloten{% else %}Geopend tot {{ vandaag.closes }}{% endif %}
 
-  **Vandaag:** {% if vandaag.closed %}Gesloten{% else %}Geopend tot {{ vandaag.closes }}{% endif %}
-
-  {% if afwijkingen %}
-  <ha-icon icon="mdi:alert" style="color: darkorange;"></ha-icon> **Afwijkingen voor de komende dagen:**
-  {% else %}
-  **Openingstijden de komende dagen:**
-  {% endif %}
-
-  {% for dag in upcoming %}
+  {% if afwijkingen %}<ha-icon icon="mdi:alert-outline"></ha-icon> **Afwijkingen voor de komende dagen:**{% else %}**Openingstijden de komende dagen:**{% endif %}
+  {% for dag in lijst %}
   - {{ dag.date }}: {% if dag.closed %}Gesloten{% else %}Open van {{ dag.opens }} tot {{ dag.closes }}{% endif %}{% if dag.reason %} — {{ dag.reason }}{% endif %}
-  {% endfor %}
+  {%- endfor %}
+card_mod:
+  style:
+    ha-markdown $: |
+      /* Kop centreren (style-attribuut werkt niet, sanitizer stript het) */
+      ha-markdown-element h2 {
+        text-align: center;
+      }
+      /* Waarschuwingsicoon: donkeroranje + knipperen */
+      ha-markdown-element ha-icon {
+        color: darkorange;
+        --mdc-icon-size: 20px;
+        vertical-align: text-bottom;   /* icoon netjes op de tekstregel */
+        animation: knipper-alert 1.5s ease-in-out infinite;
+      }
+      @keyframes knipper-alert {
+        50% { opacity: 0.25; }
+      }
 ```
 
-De kop staat gecentreerd (zelfde stijl als een `##`-kop, alleen via `<h2>` zodat
-`text-align` werkt binnen de markdown-kaart). De tweede kop wisselt
-automatisch tussen "Afwijkingen voor de komende dagen" (met een
-waarschuwingsdriehoek, `mdi:alert`, in donkeroranje) en "Openingstijden de
-komende dagen" — afhankelijk van of er in de ingestelde vooruitkijkperiode een
-`reason` voorkomt. De lijst daaronder toont per dag de tijden, met de reden
-erachter zodra die dag afwijkt.
+De kop staat gecentreerd via `card_mod`. De tweede kop wisselt automatisch
+tussen "Afwijkingen voor de komende dagen" (met een knipperend, donkeroranje
+waarschuwingsicoon, `mdi:alert-outline`) en "Openingstijden de komende dagen"
+— afhankelijk van of er in de ingestelde vooruitkijkperiode een `reason`
+voorkomt. Zijn er afwijkingen, dan toont de lijst daaronder alleen de dagen
+mét een afwijking (inclusief de reden); zijn er geen afwijkingen, dan toont de
+lijst gewoon alle komende dagen met hun openingstijden.
 
 ### Voorbeeld: automatisering (waarschuw al één dag vooraf)
 
