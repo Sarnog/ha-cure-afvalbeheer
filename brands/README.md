@@ -1,31 +1,22 @@
-# Brand-assets voor Home Assistant
+# Merklogo
 
-Home Assistant haalt het merklogo dat je ziet bij **Instellingen → Apparaten &
-Diensten** niet uit deze integratie zelf, maar uit de aparte, centrale repository
-[home-assistant/brands](https://github.com/home-assistant/brands). Dat logo
-verschijnt pas nadat een pull request daar is geaccepteerd door de HA-maintainers.
+Sinds **Home Assistant 2026.3** kan een custom integratie zijn eigen merklogo
+gewoon meeleveren in de integratie zelf — een externe pull request naar
+[home-assistant/brands](https://github.com/home-assistant/brands) is niet
+meer nodig. Home Assistant leest de afbeeldingen automatisch uit een
+`brand/`-map binnen de integratie (`custom_components/cure_afvalbeheer/brand/`)
+en geeft die voorrang boven de centrale brands-CDN. Er is geen aanpassing in
+`manifest.json` voor nodig; deze repository voldoet met
+`hacs.json`'s `"homeassistant": "2026.7.0"` ruim aan de vereiste minimumversie.
 
-## Wat hier klaarstaat
-
-`custom_integrations/cure_afvalbeheer/` bevat de assets in exact de structuur en
-naamgeving die die repository verwacht, gegenereerd uit het officiële Cure-logo
-(`https://www.cure-afvalbeheer.nl/Assets/Cure%20Logo.svg`):
+De daadwerkelijke, actieve bestanden staan dus in
+`custom_components/cure_afvalbeheer/brand/`:
 
 - `icon.png` (256×256)
 - `icon@2x.png` (512×512)
 - `logo.png` (256×256)
 - `logo@2x.png` (512×512)
-- `source.svg` — het originele bronbestand, voor eventuele toekomstige aanpassingen
 
-## Hoe dien je dit in?
-
-1. Fork [home-assistant/brands](https://github.com/home-assistant/brands).
-2. Kopieer de map `custom_integrations/cure_afvalbeheer/` (zonder `source.svg` en
-   dit `README.md` — die zijn alleen voor intern gebruik in dit project) naar
-   dezelfde map in je fork.
-3. Open een pull request. Vermeld het domein (`cure_afvalbeheer`) en een link naar
-   deze GitHub-repository (`https://github.com/Sarnog/ha-cure-afvalbeheer`) zoals
-   opgegeven in `manifest.json`.
-4. Wacht op review/goedkeuring door de HA-maintainers. Zodra de PR gemerged is,
-   verschijnt het logo automatisch in Home Assistant — er is geen versie-release
-   of herstart van deze integratie voor nodig.
+`logo-source.svg` in deze map is alleen het originele bronbestand (het
+officiële Cure-logo), bewaard voor als de PNG's ooit opnieuw gegenereerd
+moeten worden — dit bestand wordt door Home Assistant zelf niet gebruikt.
