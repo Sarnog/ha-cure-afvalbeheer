@@ -13,14 +13,19 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
 from . import CureConfigEntry
-from .const import DOMAIN, MANUFACTURER, NAME
+from .const import (
+    CONF_LOOKAHEAD_DAYS,
+    DEFAULT_LOOKAHEAD_DAYS,
+    DOMAIN,
+    MANUFACTURER,
+    MUNICIPALITIES,
+    NAME,
+)
 from .coordinator import CureDataUpdateCoordinator
 from .models import Location, OpeningHours
 from .schedule import hours_for_date, upcoming_hours
 
 PARALLEL_UPDATES = 0
-
-_UPCOMING_DAYS = 6
 
 
 async def async_setup_entry(
@@ -32,8 +37,10 @@ async def async_setup_entry(
 
     coordinator = entry.runtime_data
 
+    lookahead_days = entry.options.get(CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS)
+
     async_add_entities(
-        CureLocationSensor(coordinator, entry, location.name)
+        CureLocationSensor(coordinator, entry, location.name, lookahead_days)
         for location in coordinator.data.locations
     )
 
@@ -64,17 +71,24 @@ class CureLocationSensor(CoordinatorEntity[CureDataUpdateCoordinator], SensorEnt
         coordinator: CureDataUpdateCoordinator,
         entry: CureConfigEntry,
         location_name: str,
+        lookahead_days: int,
     ) -> None:
         """Initialise the sensor."""
 
         super().__init__(coordinator)
 
         self._location_name = location_name
+        self._lookahead_days = lookahead_days
         self._attr_unique_id = f"{entry.entry_id}_{slugify(location_name)}"
         self._attr_name = location_name
+
+        municipality_name = MUNICIPALITIES.get(
+            coordinator.municipality, coordinator.municipality
+        )
+
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            name=NAME,
+            name=f"{NAME} {municipality_name}",
             manufacturer=MANUFACTURER,
         )
 
@@ -124,7 +138,7 @@ class CureLocationSensor(CoordinatorEntity[CureDataUpdateCoordinator], SensorEnt
 
         today = dt_util.now().date()
 
-        upcoming = upcoming_hours(location, today, _UPCOMING_DAYS)
+        upcoming = upcoming_hours(location, today, self._lookahead_days + 1)
 
         return {
             "today": {

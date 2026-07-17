@@ -17,14 +17,15 @@ _LOCATION = Location(
 )
 
 
-def _build_sensor() -> CureLocationSensor:
+def _build_sensor(lookahead_days: int = 5) -> CureLocationSensor:
     coordinator = MagicMock()
     coordinator.data = CureData(locations=[_LOCATION])
+    coordinator.municipality = "eindhoven"
 
     entry = MagicMock()
     entry.entry_id = "test_entry"
 
-    sensor = CureLocationSensor(coordinator, entry, _LOCATION.name)
+    sensor = CureLocationSensor(coordinator, entry, _LOCATION.name, lookahead_days)
     sensor.hass = MagicMock()
 
     return sensor
@@ -66,3 +67,13 @@ def test_extra_state_attributes_contains_today_and_upcoming():
 
     assert len(attributes["upcoming"]) == 5
     assert attributes["upcoming"][0]["date"] == "2026-07-21"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_extra_state_attributes_respects_configured_lookahead_days():
+    sensor = _build_sensor(lookahead_days=3)
+
+    attributes = sensor.extra_state_attributes
+
+    assert len(attributes["upcoming"]) == 3
+    assert attributes["upcoming"][-1]["date"] == "2026-07-23"
