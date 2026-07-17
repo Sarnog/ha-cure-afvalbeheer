@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from homeassistant.config_entries import SOURCE_USER
+from homeassistant.config_entries import SOURCE_RECONFIGURE, SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -128,3 +128,121 @@ async def test_options_flow_updates_lookahead_days(
     assert isinstance(entry.options[CONF_LOOKAHEAD_DAYS], int)
     assert entry.options[CONF_UPDATE_INTERVAL_MINUTES] == 30
     assert isinstance(entry.options[CONF_UPDATE_INTERVAL_MINUTES], int)
+
+
+async def test_reconfigure_same_municipality_applies_without_confirmation(
+    hass, enable_custom_integrations
+) -> None:
+    """Reconfiguring to the current municipality is applied directly."""
+
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.cure_afvalbeheer.api.CureApiClient.fetch_html",
+        AsyncMock(return_value=html),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+        )
+
+        assert result["type"] is FlowResultType.FORM
+        assert result["step_id"] == "reconfigure"
+
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_MUNICIPALITY: "eindhoven"},
+        )
+
+        await hass.async_block_till_done()
+
+    assert result2["type"] is FlowResultType.ABORT
+    assert result2["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_MUNICIPALITY] == "eindhoven"
+
+
+async def test_reconfigure_different_municipality_requires_confirmation(
+    hass, enable_custom_integrations
+) -> None:
+    """Switching to a different municipality asks for confirmation first."""
+
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.cure_afvalbeheer.api.CureApiClient.fetch_html",
+        AsyncMock(return_value=html),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+        )
+
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_MUNICIPALITY: "valkenswaard"},
+        )
+
+        assert result2["type"] is FlowResultType.FORM
+        assert result2["step_id"] == "reconfigure_confirm"
+        assert result2["description_placeholders"] == {
+            "current": "Eindhoven",
+            "new": "Valkenswaard",
+        }
+        # Nothing has been applied yet - only the confirmation form was shown.
+        assert entry.data[CONF_MUNICIPALITY] == "eindhoven"
+
+        result3 = await hass.config_entries.flow.async_configure(result2["flow_id"], {})
+
+        await hass.async_block_till_done()
+
+    assert result3["type"] is FlowResultType.ABORT
+    assert result3["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_MUNICIPALITY] == "valkenswaard"
+
+
+async def test_reconfigure_aborts_if_municipality_used_by_another_entry(
+    hass, enable_custom_integrations
+) -> None:
+    """Cannot reconfigure into a municipality another entry already owns."""
+
+    entry = MockConfigEntry(
+        domain=DOMAIN, unique_id="eindhoven", data={CONF_MUNICIPALITY: "eindhoven"}
+    )
+    entry.add_to_hass(hass)
+
+    other = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="valkenswaard",
+        data={CONF_MUNICIPALITY: "valkenswaard"},
+    )
+    other.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+    )
+
+    result2 = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_MUNICIPALITY: "valkenswaard"},
+    )
+
+    assert result2["type"] is FlowResultType.ABORT
+    assert result2["reason"] == "already_configured"
+    assert entry.data[CONF_MUNICIPALITY] == "eindhoven"
