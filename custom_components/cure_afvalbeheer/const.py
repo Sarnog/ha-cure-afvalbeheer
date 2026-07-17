@@ -6,8 +6,6 @@ NAME = "Cure Afvalbeheer"
 
 MANUFACTURER = "Cure Afvalbeheer"
 
-DEFAULT_SCAN_INTERVAL = 3600  # seconden
-
 BASE_URL = "https://www.cure-afvalbeheer.nl"
 
 MUNICIPALITIES: dict[str, str] = {
@@ -18,5 +16,7 @@ MUNICIPALITIES: dict[str, str] = {
 
 CONF_MUNICIPALITY = "municipality"
 CONF_LOOKAHEAD_DAYS = "lookahead_days"
+CONF_UPDATE_INTERVAL_MINUTES = "update_interval_minutes"
 
 DEFAULT_LOOKAHEAD_DAYS = 5
+DEFAULT_UPDATE_INTERVAL_MINUTES = 60

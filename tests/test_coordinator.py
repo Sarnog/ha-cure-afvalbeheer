@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -22,12 +23,14 @@ async def test_async_update_data(hass) -> None:
         api=api,
         config_entry=MockConfigEntry(),
         municipality="eindhoven",
+        update_interval_minutes=60,
     )
 
     result = await coordinator._async_update_data()
 
     api.fetch_milieustraat.assert_awaited_once_with("eindhoven")
     assert result == CureData(locations=[])
+    assert coordinator.update_interval == timedelta(minutes=60)
 
 
 async def test_async_update_data_raises_update_failed(hass) -> None:
@@ -41,6 +44,7 @@ async def test_async_update_data_raises_update_failed(hass) -> None:
         api=api,
         config_entry=MockConfigEntry(),
         municipality="eindhoven",
+        update_interval_minutes=60,
     )
 
     with pytest.raises(UpdateFailed):

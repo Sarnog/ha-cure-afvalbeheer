@@ -17,7 +17,8 @@
     "step": {
       "init": {
         "data": {
-          "lookahead_days": "Aantal dagen vooruit"
+          "lookahead_days": "Aantal dagen vooruit",
+          "update_interval_minutes": "Update-interval (minuten)"
         }
       }
     }

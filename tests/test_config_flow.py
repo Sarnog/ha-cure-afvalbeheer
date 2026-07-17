@@ -8,6 +8,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.cure_afvalbeheer.const import (
     CONF_LOOKAHEAD_DAYS,
     CONF_MUNICIPALITY,
+    CONF_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
 )
 
@@ -105,12 +107,18 @@ async def test_options_flow_updates_lookahead_days(
 
         assert result["type"] is FlowResultType.FORM
 
+        default_update_interval = result["data_schema"]({})[
+            CONF_UPDATE_INTERVAL_MINUTES
+        ]
+        assert default_update_interval == DEFAULT_UPDATE_INTERVAL_MINUTES
+
         result2 = await hass.config_entries.options.async_configure(
             result["flow_id"],
-            {CONF_LOOKAHEAD_DAYS: 7},
+            {CONF_LOOKAHEAD_DAYS: 7, CONF_UPDATE_INTERVAL_MINUTES: 30},
         )
 
         await hass.async_block_till_done()
 
     assert result2["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options[CONF_LOOKAHEAD_DAYS] == 7
+    assert entry.options[CONF_UPDATE_INTERVAL_MINUTES] == 30

@@ -12,7 +12,9 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_LOOKAHEAD_DAYS,
     CONF_MUNICIPALITY,
+    CONF_UPDATE_INTERVAL_MINUTES,
     DEFAULT_LOOKAHEAD_DAYS,
+    DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
     MUNICIPALITIES,
 )
@@ -82,6 +84,9 @@ class CureOptionsFlow(config_entries.OptionsFlowWithReload):
         current_lookahead_days = self.config_entry.options.get(
             CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS
         )
+        current_update_interval = self.config_entry.options.get(
+            CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES
+        )
 
         return self.async_show_form(
             step_id="init",
@@ -94,6 +99,16 @@ class CureOptionsFlow(config_entries.OptionsFlowWithReload):
                             min=1,
                             max=30,
                             mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_UPDATE_INTERVAL_MINUTES, default=current_update_interval
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=5,
+                            max=1440,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
                         )
                     ),
                 }

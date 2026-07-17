@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import CureApiClient
-from .const import DEFAULT_SCAN_INTERVAL, NAME
+from .const import NAME
 from .exceptions import CureApiError
 from .logger import LOGGER
 from .models import CureData
@@ -24,6 +24,7 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
         api: CureApiClient,
         config_entry: ConfigEntry,
         municipality: str,
+        update_interval_minutes: int,
     ) -> None:
         """Initialise the coordinator."""
 
@@ -32,7 +33,7 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
             logger=LOGGER,
             name=f"{NAME} {municipality}",
             config_entry=config_entry,
-            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
+            update_interval=timedelta(minutes=update_interval_minutes),
         )
 
         self.api = api

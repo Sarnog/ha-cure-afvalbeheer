@@ -17,7 +17,8 @@
     "step": {
       "init": {
         "data": {
-          "lookahead_days": "Number of days to look ahead"
+          "lookahead_days": "Number of days to look ahead",
+          "update_interval_minutes": "Update interval (minutes)"
         }
       }
     }
