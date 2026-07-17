@@ -125,14 +125,28 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
       zonder verwijderen + opnieuw toevoegen. Bij een daadwerkelijke
       wijziging vraagt de flow eerst expliciet om bevestiging, omdat alle
       sensoren en hun geschiedenis van de huidige gemeente vervangen worden
-- [x] Repair-issue bij een kapotte parser (`homeassistant.helpers
-      .issue_registry`): een geslaagde fetch die geen enkele locatie meer
-      oplevert toont nu een zichtbare "reparatie"-melding in de Home
-      Assistant-UI, in plaats van alleen een debug-logregel
+- [x] Repair-issue bij een kapotte parser (via
+      `homeassistant.helpers.issue_registry`): een geslaagde fetch die geen
+      enkele locatie meer oplevert toont nu een zichtbare
+      "reparatie"-melding in de Home Assistant-UI, in plaats van alleen een
+      debug-logregel
 - [x] Twee nieuwe sensoren per milieustraat, "volgende open" en "volgende
       gesloten" (`next_open`/`next_close`, timestamp-device-class) - stond
       al in het allereerste ChatGPT-ontwerp ("Derived"-sectie) maar was
       nooit gebouwd
+
+---
+
+# v0.5.1 (klaar)
+
+- [x] Bugfix: de reconfigure-flow werkte bij een daadwerkelijke
+      gemeentewijziging wel `entry.data[CONF_MUNICIPALITY]` bij, maar gaf
+      geen nieuwe `unique_id` mee aan `async_update_reload_and_abort`. De
+      config entry bleef daardoor eigenaar van de oude gemeente-unique_id,
+      wat een nieuwe integratie voor die (nu vrijgekomen) gemeente ten
+      onrechte zou blokkeren. Gevonden tijdens een actieve, gerichte
+      bug-review na v0.5.0 (niet door ruff/pytest alleen); een regressietest
+      op `entry.unique_id` na een reconfigure is toegevoegd.
 
 ---
 
@@ -275,13 +289,26 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
       without removing and re-adding it. On an actual change, the flow
       first asks for explicit confirmation, since all sensors and their
       history for the current municipality get replaced
-- [x] Repair issue for a broken parser (`homeassistant.helpers
-      .issue_registry`): a successful fetch that returns no locations at
-      all now shows a visible "repair" notification in the Home Assistant
-      UI, instead of just a debug log line
+- [x] Repair issue for a broken parser (via
+      `homeassistant.helpers.issue_registry`): a successful fetch that
+      returns no locations at all now shows a visible "repair" notification
+      in the Home Assistant UI, instead of just a debug log line
 - [x] Two new sensors per milieustraat, "next open" and "next close"
       (`next_open`/`next_close`, timestamp device class) - already present
       in the very first ChatGPT design ("Derived" section) but never built
+
+---
+
+# v0.5.1 (done)
+
+- [x] Bugfix: the reconfigure flow updated `entry.data[CONF_MUNICIPALITY]`
+      on an actual municipality change, but never passed a new `unique_id`
+      to `async_update_reload_and_abort`. The config entry kept owning the
+      old municipality's unique_id, which would incorrectly block a new
+      integration from being added for that (now freed-up) municipality.
+      Found during an active, targeted bug review after v0.5.0 (not by
+      ruff/pytest alone); a regression test asserting `entry.unique_id`
+      after a reconfigure was added.
 
 ---
 

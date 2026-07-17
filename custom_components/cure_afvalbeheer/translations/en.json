@@ -48,7 +48,7 @@
   "issues": {
     "no_locations_found": {
       "title": "No milieustraten found anymore",
-      "description": "The integration could no longer find any milieustraat on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. Please report this via the integration's issue tracker and attach the diagnostics download."
+      "description": "The integration could no longer find a single milieustraat on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. Please report this via the integration's issue tracker and attach the diagnostics download."
     }
   }
 }
