@@ -68,15 +68,6 @@ class CureParser:
 
         return parse_opening_hours(self.opening_hours_lines())
 
-    def parse_location(self) -> Location:
-        """Parse one recycling centre."""
-
-        return Location(
-            name=self.location_name(),
-            address=None,
-            hours=self.opening_hours(),
-        )
-
     def location_addresses(self) -> list[tuple[str, str]]:
         """Parse the recycling centre addresses."""
 
