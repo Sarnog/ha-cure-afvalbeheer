@@ -33,7 +33,7 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 - [x] Reguliere openingstijden parsen
 - [x] Adressen parsen
 - [x] Openingstijden van vandaag parsen
-- [x] De komende N dagen parsen
+- [x] De komende dagen parsen
 
 ## Coordinator
 
