@@ -90,11 +90,11 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 ---
 
-# v0.4.0 (in progress)
+# v0.4.0 (done)
 
-- [ ] Diagnostics (`diagnostics.py`): downloadable dump of the config entry
+- [x] Diagnostics (`diagnostics.py`): downloadable dump of the config entry
       and the coordinator's current data, for bug reports
-- [ ] Configurable update interval (Options Flow, alongside the existing
+- [x] Configurable update interval (Options Flow, alongside the existing
       forecast-window setting)
 
 ---
