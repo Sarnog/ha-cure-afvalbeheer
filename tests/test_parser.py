@@ -34,9 +34,9 @@ def test_opening_hours_lines():
 
     lines = parser.opening_hours_lines()
 
-    assert len(lines) == 6
+    assert len(lines) == 7
     assert lines[0].startswith("Maandag")
-    assert lines[-1].startswith("Zaterdag")
+    assert lines[-1].startswith("Zon")
 
 
 def test_location_name():
@@ -66,8 +66,8 @@ def test_parse_locations():
     assert locations[1].name == "Milieustraat Lodewijkstraat"
     assert locations[1].address == "Lodewijkstraat 9 5652 AC Eindhoven"
 
-    assert len(locations[0].hours) == 6
-    assert len(locations[1].hours) == 6
+    assert len(locations[0].hours) == 7
+    assert len(locations[1].hours) == 7
 
 
 def test_location_addresses():

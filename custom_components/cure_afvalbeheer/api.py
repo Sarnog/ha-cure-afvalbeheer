@@ -5,12 +5,9 @@ from __future__ import annotations
 from aiohttp import ClientResponseError, ClientSession
 
 from .const import BASE_URL
+from .exceptions import CureApiError
 from .models import CureData
 from .parser import CureParser
-
-
-class CureApiError(Exception):
-    """Error communicating with the Cure website."""
 
 
 class CureApiClient:

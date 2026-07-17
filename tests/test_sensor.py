@@ -1,0 +1,68 @@
+from unittest.mock import MagicMock
+
+from freezegun import freeze_time
+
+from custom_components.cure_afvalbeheer.models import CureData, Location, OpeningHours
+from custom_components.cure_afvalbeheer.sensor import CureLocationSensor
+from custom_components.cure_afvalbeheer.weekday import Weekday
+
+_LOCATION = Location(
+    name="Milieustraat Acht",
+    address="Achtseweg Noord 41 5651 GG Eindhoven",
+    hours=[
+        OpeningHours(day=Weekday.MONDAY, opens="08:30", closes="17:00", closed=False),
+        OpeningHours(day=Weekday.TUESDAY, opens="08:30", closes="17:00", closed=False),
+        OpeningHours(day=Weekday.HOLIDAY, opens=None, closes=None, closed=True),
+    ],
+)
+
+
+def _build_sensor() -> CureLocationSensor:
+    coordinator = MagicMock()
+    coordinator.data = CureData(locations=[_LOCATION])
+
+    entry = MagicMock()
+    entry.entry_id = "test_entry"
+
+    sensor = CureLocationSensor(coordinator, entry, _LOCATION.name)
+    sensor.hass = MagicMock()
+
+    return sensor
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_native_value_open_during_opening_hours():
+    sensor = _build_sensor()
+
+    assert sensor.native_value == "open"
+
+
+@freeze_time("2026-07-20 18:00:00")
+def test_native_value_closed_outside_opening_hours():
+    sensor = _build_sensor()
+
+    assert sensor.native_value == "closed"
+
+
+@freeze_time("2026-07-19 10:00:00")
+def test_native_value_closed_on_holiday_sunday():
+    sensor = _build_sensor()
+
+    assert sensor.native_value == "closed"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_extra_state_attributes_contains_today_and_upcoming():
+    sensor = _build_sensor()
+
+    attributes = sensor.extra_state_attributes
+
+    assert attributes["today"] == {
+        "date": "2026-07-20",
+        "closed": False,
+        "opens": "08:30",
+        "closes": "17:00",
+    }
+
+    assert len(attributes["upcoming"]) == 5
+    assert attributes["upcoming"][0]["date"] == "2026-07-21"

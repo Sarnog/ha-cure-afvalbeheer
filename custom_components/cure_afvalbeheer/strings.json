@@ -5,6 +5,19 @@
         "title": "Cure Afvalbeheer",
         "description": "Voeg de Cure Afvalbeheer integratie toe."
       }
+    },
+    "abort": {
+      "already_configured": "Cure Afvalbeheer is al geconfigureerd."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "milieustraat": {
+        "state": {
+          "open": "Open",
+          "closed": "Gesloten"
+        }
+      }
     }
   }
 }

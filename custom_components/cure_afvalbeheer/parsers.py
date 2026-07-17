@@ -20,6 +20,7 @@ _DAY_MAPPING = {
     "Zaterdag": Weekday.SATURDAY,
     "Zondag": Weekday.SUNDAY,
     "Zon- en feestdagen": Weekday.HOLIDAY,
+    "Zon & Feestdagen": Weekday.HOLIDAY,
 }
 
 

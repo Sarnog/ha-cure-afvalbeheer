@@ -20,3 +20,12 @@ def test_parse_closed_day():
     assert result.closed
     assert result.opens is None
     assert result.closes is None
+
+
+def test_parse_closed_day_ampersand_variant():
+    result = parse_opening_hours_line("Zon & Feestdagen: Gesloten")
+
+    assert result.day is Weekday.HOLIDAY
+    assert result.closed
+    assert result.opens is None
+    assert result.closes is None

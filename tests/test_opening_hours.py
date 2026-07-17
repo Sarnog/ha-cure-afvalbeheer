@@ -13,6 +13,7 @@ def test_opening_hours():
 
     hours = parser.opening_hours()
 
-    assert len(hours) == 6
+    assert len(hours) == 7
     assert hours[0].day is Weekday.MONDAY
-    assert hours[-1].day is Weekday.SATURDAY
+    assert hours[-2].day is Weekday.SATURDAY
+    assert hours[-1].day is Weekday.HOLIDAY
