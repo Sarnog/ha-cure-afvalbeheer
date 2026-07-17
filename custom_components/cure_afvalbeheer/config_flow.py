@@ -119,6 +119,7 @@ class CureAfvalbeheerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return self.async_update_reload_and_abort(
                 reconfigure_entry,
+                unique_id=municipality,
                 title=MUNICIPALITIES[municipality],
                 data={CONF_MUNICIPALITY: municipality},
             )

@@ -178,7 +178,9 @@ async def test_reconfigure_different_municipality_requires_confirmation(
         encoding="utf-8"
     )
 
-    entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
+    entry = MockConfigEntry(
+        domain=DOMAIN, unique_id="eindhoven", data={CONF_MUNICIPALITY: "eindhoven"}
+    )
     entry.add_to_hass(hass)
 
     with patch(
@@ -206,6 +208,7 @@ async def test_reconfigure_different_municipality_requires_confirmation(
         }
         # Nothing has been applied yet - only the confirmation form was shown.
         assert entry.data[CONF_MUNICIPALITY] == "eindhoven"
+        assert entry.unique_id == "eindhoven"
 
         result3 = await hass.config_entries.flow.async_configure(result2["flow_id"], {})
 
@@ -214,6 +217,19 @@ async def test_reconfigure_different_municipality_requires_confirmation(
     assert result3["type"] is FlowResultType.ABORT
     assert result3["reason"] == "reconfigure_successful"
     assert entry.data[CONF_MUNICIPALITY] == "valkenswaard"
+
+    # The unique_id must move with the data - otherwise this entry keeps
+    # "owning" the old municipality forever, blocking a fresh entry for it.
+    assert entry.unique_id == "valkenswaard"
+
+    result4 = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result5 = await hass.config_entries.flow.async_configure(
+        result4["flow_id"], {CONF_MUNICIPALITY: "eindhoven"}
+    )
+
+    assert result5["type"] is FlowResultType.CREATE_ENTRY
 
 
 async def test_reconfigure_aborts_if_municipality_used_by_another_entry(
