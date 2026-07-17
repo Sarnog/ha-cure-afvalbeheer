@@ -1,3 +1,189 @@
+🇳🇱 [Nederlands](#architectuur) | 🇬🇧 [English](#architecture)
+
+---
+
+# Architectuur
+
+## Overzicht
+
+Het project is opgedeeld in verschillende lagen.
+
+```
+Internet
+    │
+    ▼
+HTTP-client
+    │
+    ▼
+Selectors
+    │
+    ▼
+Parser ──gebruikt──> notices.py (parsing van vrije-tekst-afwijkingen)
+    │
+    ▼
+Models (incl. Notice)
+    │
+    ▼
+Coordinator
+    │
+    ▼
+schedule.py (resolve_day / resolve_upcoming: past Notices toe op het
+             reguliere weekrooster)
+    │
+    ▼
+Entiteiten
+```
+
+Elke laag heeft precies één verantwoordelijkheid.
+
+---
+
+# HTTP-client
+
+Uitsluitend verantwoordelijk voor het downloaden van webpagina's.
+
+Geen parsing.
+
+Geen Home Assistant-code.
+
+---
+
+# Selectors
+
+Verantwoordelijk voor het lokaliseren van HTML-elementen.
+
+Gebruikt BeautifulSoup.
+
+Bevat alle HTML-selectors.
+
+Geen Home Assistant-imports.
+
+---
+
+# Parser
+
+Verantwoordelijk voor het omzetten van HTML-elementen naar Python-modellen.
+
+Mag nooit CSS-selectors bevatten.
+
+Gebruikt alleen functies uit `selectors.py`.
+
+---
+
+# Models
+
+Bevat uitsluitend dataclasses.
+
+Geen parslogica.
+
+Geen Home Assistant-code.
+
+---
+
+# Coordinator
+
+Gebruikt Home Assistant's `DataUpdateCoordinator`.
+
+Verantwoordelijk voor:
+
+- het downloaden van data
+- caching
+- update-intervallen
+- retry-logica
+- foutafhandeling
+
+---
+
+# Entiteiten
+
+Entiteiten doen nooit netwerkverzoeken.
+
+Entiteiten lezen alleen data uit de coordinator.
+
+---
+
+# Notices
+
+`notices.py` haalt tijdelijke afwijkingen (hitteprotocol, sluitingen,
+verbouwingen) uit vrije Nederlandse tekst op de milieustraat-pagina.
+
+Bevat geen BeautifulSoup/HTML-code en geen Home Assistant-imports - het
+neemt alleen platte tekst aan en geeft een `Notice` terug (of `None` als de
+tekst geen herkend patroon matcht). `parser.py` is de enige aanroeper: die
+selecteert de relevante kop-/inhoudstekst via `selectors.py` en geeft die
+door aan `notices.py`.
+
+---
+
+# Schedule
+
+`schedule.py` bepaalt de openingstijden voor een specifieke datum.
+
+`hours_for_date`/`upcoming_hours` lezen alleen het reguliere weekrooster.
+`resolve_day`/`resolve_upcoming` passen daarnaast elke `Notice` toe die bij
+die datum en locatie hoort, en leveren een `ResolvedDay` met een
+`reason`-veld op zodat entiteiten kunnen laten zien *waarom* een dag afwijkt
+van het reguliere rooster.
+
+---
+
+# Diagnostics
+
+`diagnostics.py` biedt `async_get_config_entry_diagnostics`, Home
+Assistant's standaard downloadbare-diagnostics-instappunt (automatisch
+gedetecteerd, geen manifest.json-wijziging nodig). Het serialiseert
+`entry.data`/`entry.options` en de actuele locaties/openingstijden/meldingen
+van de coordinator naar platte, expliciete dicts - geen redactie nodig, want
+niets hierin is gevoeliger dan de gekozen gemeente en de publieke
+openingstijden-info die al op de Cure-website staat.
+
+---
+
+# Logging
+
+Gebruik `logger.py`.
+
+Gebruik nooit `print()`.
+
+---
+
+# Async
+
+Alle netwerkcommunicatie gebruikt `aiohttp`.
+
+Geen blokkerende I/O.
+
+---
+
+# Parserregels
+
+Geef de voorkeur aan semantische HTML.
+
+Zoek in deze volgorde:
+
+1. koppen
+2. tabellen
+3. semantische HTML-elementen
+4. CSS-klassen (alleen als het niet anders kan)
+
+---
+
+# Toekomstige uitbreidingen
+
+Klaar, zonder de parser-architectuur te wijzigen:
+
+- meerdere gemeentes (v0.1.0)
+- tijdelijke sluitingen, hitteprotocol (v0.2.0) - geparst van de
+  milieustraat-pagina zelf; een los RSS-feed bleek niet nodig
+- diagnostics, configureerbaar update-interval (v0.4.0)
+
+Nog te ondersteunen:
+
+- aanvullende sensoren (zie ROADMAP.md's "Toekomstideeën" voor concrete
+  ideeën)
+
+---
+
 # Architecture
 
 ## Overview
