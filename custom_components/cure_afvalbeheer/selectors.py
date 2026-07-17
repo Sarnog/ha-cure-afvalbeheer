@@ -104,3 +104,44 @@ def address_section(soup: BeautifulSoup) -> Tag | None:
             return heading.parent
 
     return None
+
+
+def news_heading(soup: BeautifulSoup) -> str | None:
+    """Return the site-wide news banner heading, if present.
+
+    This block is identical across every municipality page - it is a
+    site-wide announcement (e.g. an active heat protocol), not specific
+    to one municipality.
+    """
+
+    block = soup.find(attrs={"data-block": "newsBlock"})
+
+    if block is None:
+        return None
+
+    heading = block.find("h2")
+
+    if heading is None:
+        return None
+
+    return heading.get_text(strip=True)
+
+
+def closure_notice_section(soup: BeautifulSoup) -> Tag | None:
+    """Return the active closure/renovation notice block, if present.
+
+    A municipality page can have several "textAndMedia" blocks for
+    unrelated content (packing tips, etc). An active notice is the only
+    one whose heading starts with "Let op!".
+    """
+
+    for block in soup.find_all(attrs={"data-block": "textAndMedia"}):
+        heading = block.find("h2")
+
+        if heading is None:
+            continue
+
+        if heading.get_text(strip=True).lower().startswith("let op!"):
+            return block
+
+    return None
