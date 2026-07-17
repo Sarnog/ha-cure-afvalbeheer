@@ -84,9 +84,9 @@ async def test_fetch_milieustraat() -> None:
 
     client.fetch_html = AsyncMock(return_value=html)
 
-    result = await client.fetch_milieustraat()
+    result = await client.fetch_milieustraat("eindhoven")
 
     assert isinstance(result, CureData)
     assert len(result.locations) == 2
 
-    client.fetch_html.assert_awaited_once_with("/milieustraat/")
+    client.fetch_html.assert_awaited_once_with("/milieustraat/milieustraat-eindhoven/")

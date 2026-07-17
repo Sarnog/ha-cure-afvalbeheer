@@ -30,10 +30,10 @@ class CureApiClient:
         except ClientResponseError as err:
             raise CureApiError("Failed to fetch HTML from Cure website") from err
 
-    async def fetch_milieustraat(self) -> CureData:
-        """Fetch and parse the milieustraat page."""
+    async def fetch_milieustraat(self, municipality: str) -> CureData:
+        """Fetch and parse the milieustraat page for a municipality."""
 
-        html = await self.fetch_html("/milieustraat/")
+        html = await self.fetch_html(f"/milieustraat/milieustraat-{municipality}/")
 
         return self.parse_html(html)
 

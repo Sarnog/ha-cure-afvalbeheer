@@ -21,11 +21,12 @@ async def test_async_update_data(hass) -> None:
         hass=hass,
         api=api,
         config_entry=MockConfigEntry(),
+        municipality="eindhoven",
     )
 
     result = await coordinator._async_update_data()
 
-    api.fetch_milieustraat.assert_awaited_once()
+    api.fetch_milieustraat.assert_awaited_once_with("eindhoven")
     assert result == CureData(locations=[])
 
 
@@ -39,6 +40,7 @@ async def test_async_update_data_raises_update_failed(hass) -> None:
         hass=hass,
         api=api,
         config_entry=MockConfigEntry(),
+        municipality="eindhoven",
     )
 
     with pytest.raises(UpdateFailed):

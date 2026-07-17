@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.cure_afvalbeheer.const import DOMAIN
+from custom_components.cure_afvalbeheer.const import CONF_MUNICIPALITY, DOMAIN
 
 
 async def test_setup_entry_creates_sensors(hass, enable_custom_integrations) -> None:
@@ -14,7 +14,7 @@ async def test_setup_entry_creates_sensors(hass, enable_custom_integrations) -> 
         encoding="utf-8"
     )
 
-    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
     entry.add_to_hass(hass)
 
     with patch(

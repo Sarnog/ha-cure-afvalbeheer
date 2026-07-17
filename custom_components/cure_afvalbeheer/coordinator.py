@@ -23,23 +23,25 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
         hass: HomeAssistant,
         api: CureApiClient,
         config_entry: ConfigEntry,
+        municipality: str,
     ) -> None:
         """Initialise the coordinator."""
 
         super().__init__(
             hass,
             logger=LOGGER,
-            name=NAME,
+            name=f"{NAME} {municipality}",
             config_entry=config_entry,
             update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
         )
 
         self.api = api
+        self.municipality = municipality
 
     async def _async_update_data(self) -> CureData:
         """Fetch the latest data from the Cure website."""
 
         try:
-            return await self.api.fetch_milieustraat()
+            return await self.api.fetch_milieustraat(self.municipality)
         except CureApiError as err:
             raise UpdateFailed(str(err)) from err
