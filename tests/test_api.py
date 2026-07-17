@@ -5,7 +5,10 @@ import pytest
 from aiohttp import ClientResponseError, ClientSession
 from yarl import URL
 
-from custom_components.cure_afvalbeheer.api import CureApiClient
+from custom_components.cure_afvalbeheer.api import (
+    CureApiClient,
+    CureApiError,
+)
 from custom_components.cure_afvalbeheer.models import CureData
 
 
@@ -60,7 +63,10 @@ async def test_fetch_html_raises_http_error() -> None:
 
     client = CureApiClient(session)
 
-    with pytest.raises(ClientResponseError):
+    with pytest.raises(
+        CureApiError,
+        match="Failed to fetch HTML from Cure website",
+    ):
         await client.fetch_html("/")
 
 

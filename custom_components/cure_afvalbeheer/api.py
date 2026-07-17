@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from aiohttp import ClientSession
+from aiohttp import ClientResponseError, ClientSession
 
 from .const import BASE_URL
 from .models import CureData
 from .parser import CureParser
+
+
+class CureApiError(Exception):
+    """Error communicating with the Cure website."""
 
 
 class CureApiClient:
@@ -20,10 +24,14 @@ class CureApiClient:
     async def fetch_html(self, path: str) -> str:
         """Fetch HTML from the Cure website."""
 
-        async with self._session.get(f"{BASE_URL}{path}") as response:
-            response.raise_for_status()
+        try:
+            async with self._session.get(f"{BASE_URL}{path}") as response:
+                response.raise_for_status()
 
-            return await response.text()
+                return await response.text()
+
+        except ClientResponseError as err:
+            raise CureApiError("Failed to fetch HTML from Cure website") from err
 
     async def fetch_milieustraat(self) -> CureData:
         """Fetch and parse the milieustraat page."""
