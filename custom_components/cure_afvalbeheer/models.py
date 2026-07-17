@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 
 from .weekday import Weekday
 
@@ -27,7 +28,23 @@ class Location:
 
 
 @dataclass(slots=True)
+class Notice:
+    """A temporary deviation from the regular weekly schedule."""
+
+    reason: str
+    title: str
+    closed: bool
+    opens: str | None = None
+    closes: str | None = None
+    starts: date | None = None
+    ends: date | None = None
+    dates: list[date] | None = None
+    location_hint: str | None = None
+
+
+@dataclass(slots=True)
 class CureData:
     """Complete parsed Cure data."""
 
     locations: list[Location]
+    notices: list[Notice] = field(default_factory=list)
