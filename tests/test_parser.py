@@ -89,3 +89,30 @@ def test_location_addresses():
             "Lodewijkstraat 9 5652 AC Eindhoven",
         ),
     ]
+
+
+def test_location_addresses_falls_back_to_page_title_without_h3():
+    """Some single-location municipalities (e.g. Geldrop-Mierlo) have no
+    h3 location name in the address section, only the heading and one
+    address paragraph."""
+
+    html = """
+    <html>
+    <body>
+    <h1>Milieustraat Geldrop-Mierlo</h1>
+    <section>
+        <h2>Adres Milieustraat Geldrop-Mierlo</h2>
+        <p>Industriepark 8 5663 PG Geldrop</p>
+    </section>
+    </body>
+    </html>
+    """
+
+    parser = CureParser(html)
+
+    assert parser.location_addresses() == [
+        (
+            "Milieustraat Geldrop-Mierlo",
+            "Industriepark 8 5663 PG Geldrop",
+        ),
+    ]

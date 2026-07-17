@@ -69,7 +69,14 @@ class CureParser:
         return parse_opening_hours(self.opening_hours_lines())
 
     def location_addresses(self) -> list[tuple[str, str]]:
-        """Parse the recycling centre addresses."""
+        """Parse the recycling centre addresses.
+
+        Municipalities with a single recycling centre sometimes omit the
+        repeated h3 location name in the address section entirely (e.g.
+        Geldrop-Mierlo has just a heading and one address paragraph, no
+        h3). Fall back to the page's own h1 title as the location name
+        in that case, since it is otherwise dropped silently.
+        """
 
         section = selectors.address_section(self._soup)
 
@@ -84,12 +91,15 @@ class CureParser:
             if element.name == "h3":
                 current_name = element.get_text(strip=True)
 
-            elif element.name == "p" and current_name:
+            elif element.name == "p":
                 address = " ".join(element.stripped_strings)
+
+                if not address:
+                    continue
 
                 result.append(
                     (
-                        current_name,
+                        current_name or self.location_name(),
                         address,
                     )
                 )
