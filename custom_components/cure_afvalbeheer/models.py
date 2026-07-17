@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .weekday import Weekday
+
 
 @dataclass(slots=True)
 class OpeningHours:
     """Opening hours for one day."""
 
-    day: str
+    day: Weekday
     opens: str | None
     closes: str | None
     closed: bool
@@ -20,6 +22,7 @@ class Location:
     """One recycling centre."""
 
     name: str
+    address: str | None
     hours: list[OpeningHours]
 
 

@@ -75,3 +75,14 @@ def paragraphs(section: Tag) -> list[str]:
             result.append(text)
 
     return result
+
+
+def location_name(soup: BeautifulSoup) -> str:
+    """Return the location name."""
+
+    heading = soup.find("h1")
+
+    if heading is None:
+        return ""
+
+    return heading.get_text(strip=True)

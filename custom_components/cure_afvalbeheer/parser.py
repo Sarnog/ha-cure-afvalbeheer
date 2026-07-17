@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 from . import selectors
 from .logger import LOGGER
-from .models import OpeningHours
+from .models import CureData, OpeningHours
 from .parsers import (
     is_opening_hours_line,
     parse_opening_hours,
@@ -59,7 +59,14 @@ class CureParser:
 
         return parse_opening_hours(self.opening_hours_lines())
 
-    def parse(self) -> list:
-        """Dummy parser."""
+    def parse(self) -> CureData:
+        """Parse the complete page."""
 
-        return []
+        return CureData(
+            locations=[],
+        )
+
+    def location_name(self) -> str:
+        """Return the location name."""
+
+        return selectors.location_name(self._soup)

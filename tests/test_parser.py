@@ -26,12 +26,24 @@ def test_headings():
 
 
 def test_opening_hours_lines():
+    html = Path(
+        "tests/fixtures/milieustraat_eindhoven.html"
+    ).read_text(encoding="utf-8")
+
+    parser = CureParser(html)
+
+    lines = parser.opening_hours_lines()
+
+    assert len(lines) == 6
+    assert lines[0].startswith("Maandag")
+    assert lines[-1].startswith("Zaterdag")
+
+
+def test_location_name():
     html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
         encoding="utf-8"
     )
 
     parser = CureParser(html)
 
-    lines = parser.opening_hours_lines()
-
-    assert len(lines) >= 7
+    assert parser.location_name() == "Milieustraat Eindhoven"
