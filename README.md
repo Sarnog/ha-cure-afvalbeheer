@@ -142,16 +142,49 @@ content: |
   {%- set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' -%}
   {%- set vandaag = state_attr(sensor, 'today') -%}
   {%- set upcoming = state_attr(sensor, 'upcoming') or [] -%}
+  {#- Naam en hulpsensoren worden afgeleid van de bronsensor hierboven -#}
+  {%- set volledig = state_attr(sensor, 'friendly_name') or '' -%}
+  {#- Alles vóór het woord 'Milieustraat' weglaten (integratie- en apparaatnaam) -#}
+  {%- set pos = (volledig | lower).find('milieustraat') -%}
+  {%- set naam = volledig[pos:] if pos >= 0 else (volledig or 'Milieustraat') -%}
+  {%- set s_open = states(sensor ~ '_volgende_open') -%}
+  {%- set s_dicht = states(sensor ~ '_volgende_gesloten') -%}
+  {#- Is de milieustraat op dit moment daadwerkelijk open? -#}
+  {%- set nu_open = vandaag is not none and not vandaag.closed
+        and vandaag.opens is not none and vandaag.closes is not none
+        and now() >= today_at(vandaag.opens) and now() <= today_at(vandaag.closes) -%}
   {#- Sluitingstijd voorbij? Dan geldt vandaag als gesloten -#}
   {%- set na_sluiting = vandaag is not none and not vandaag.closed and vandaag.closes is not none and now() > today_at(vandaag.closes) -%}
+  {#- Alleen de sensor die nu telt hoeft een geldig tijdstip te hebben; zo niet: regel weglaten -#}
+  {%- set d_open = as_datetime(s_open, none) -%}
+  {%- set d_dicht = as_datetime(s_dicht, none) -%}
+  {%- set toon_teller = (d_dicht if nu_open else d_open) is not none -%}
   {#- Datum van yyyy-mm-dd naar dd-mm-yyyy -#}
   {%- macro datum_nl(d) -%}
   {%- set s = d | string -%}{{ s[8:10] }}-{{ s[5:7] }}-{{ s[0:4] }}
   {%- endmacro -%}
-  <h2>Milieustraat Acht</h2>
+  {#- Aftellen naar een timestamp-sensor: de frontend doet dit alleen in entity-rijen, hier zelf rekenen -#}
+  {%- macro aftellen(t) -%}
+  {%- set d = as_datetime(t, none) -%}
+  {%- if d is none -%}onbekend
+  {%- else -%}
+  {%- set sec = ((d - now()).total_seconds() | int, 0) | max -%}
+  {%- set dg = (sec // 86400) | int -%}
+  {%- set uu = ((sec % 86400) // 3600) | int -%}
+  {%- set mm = ((sec % 3600) // 60) | int -%}
+  {%- if dg > 0 -%}{{ dg }} {{ 'dag' if dg == 1 else 'dagen' }}{% if uu > 0 %} en {{ uu }} uur{% endif %}
+  {%- elif uu > 0 -%}{{ uu }} uur{% if mm > 0 %} en {{ mm }} min{% endif %}
+  {%- elif mm > 0 -%}{{ mm }} min
+  {%- else -%}minder dan een minuut
+  {%- endif -%}
+  {%- endif -%}
+  {%- endmacro -%}
+  <h2>{{ naam }}</h2>
 
   **Vandaag:** {% if vandaag is none %}Onbekend{% elif vandaag.closed or na_sluiting %}Gesloten{% else %}Geopend van {{ vandaag.opens }} tot {{ vandaag.closes }}{% endif %}
-
+  {% if toon_teller %}
+  {% if nu_open %}**Sluit over:** {{ aftellen(s_dicht) }}{% else %}**Weer open over:** {{ aftellen(s_open) }}{% endif %}
+  {% endif %}
   **Openingstijden de komende dagen:**
   {% for dag in upcoming %}
   - {% if dag.reason %}<ha-icon icon="mdi:alert-outline"></ha-icon>{% endif %}{{ datum_nl(dag.date) }}: {% if dag.closed %}Gesloten{% else %}Open van {{ dag.opens }} tot {{ dag.closes }}{% endif %}{% if dag.reason %} — {{ dag.reason }}{% endif %}
