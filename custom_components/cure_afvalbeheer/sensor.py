@@ -38,7 +38,9 @@ async def async_setup_entry(
 
     coordinator = entry.runtime_data
 
-    lookahead_days = entry.options.get(CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS)
+    # NumberSelector-backed options always come back as float, regardless
+    # of step/mode; int() protects against a float leaking into range().
+    lookahead_days = int(entry.options.get(CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS))
 
     known_locations: set[str] = set()
 

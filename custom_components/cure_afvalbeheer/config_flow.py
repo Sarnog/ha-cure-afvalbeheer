@@ -79,13 +79,26 @@ class CureOptionsFlow(config_entries.OptionsFlowWithReload):
         """Manage the options."""
 
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            # NumberSelector always yields a float, regardless of step/mode;
+            # coerce back to int here so a stray "10.0" never leaks into
+            # storage and breaks anything that expects a plain int (e.g.
+            # range() when resolving the forecast window).
+            return self.async_create_entry(
+                data={
+                    CONF_LOOKAHEAD_DAYS: int(user_input[CONF_LOOKAHEAD_DAYS]),
+                    CONF_UPDATE_INTERVAL_MINUTES: int(
+                        user_input[CONF_UPDATE_INTERVAL_MINUTES]
+                    ),
+                }
+            )
 
-        current_lookahead_days = self.config_entry.options.get(
-            CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS
+        current_lookahead_days = int(
+            self.config_entry.options.get(CONF_LOOKAHEAD_DAYS, DEFAULT_LOOKAHEAD_DAYS)
         )
-        current_update_interval = self.config_entry.options.get(
-            CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES
+        current_update_interval = int(
+            self.config_entry.options.get(
+                CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES
+            )
         )
 
         return self.async_show_form(

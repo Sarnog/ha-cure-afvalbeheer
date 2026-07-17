@@ -4,7 +4,12 @@ from unittest.mock import AsyncMock, patch
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.cure_afvalbeheer.const import CONF_MUNICIPALITY, DOMAIN
+from custom_components.cure_afvalbeheer.const import (
+    CONF_LOOKAHEAD_DAYS,
+    CONF_MUNICIPALITY,
+    CONF_UPDATE_INTERVAL_MINUTES,
+    DOMAIN,
+)
 from custom_components.cure_afvalbeheer.models import CureData, Location
 
 
@@ -107,3 +112,50 @@ async def test_new_location_gets_entities_without_restart(
 
     # 3 locations now x 3 entities each, without a restart.
     assert len(after) == 9
+
+
+async def test_setup_survives_float_options_from_before_the_fix(
+    hass, enable_custom_integrations
+) -> None:
+    """Regression test: NumberSelector always stores floats.
+
+    Home Assistant's NumberSelector coerces to float regardless of
+    step/mode, so an entry saved before the int() fix has
+    lookahead_days/update_interval_minutes stored as float. Setup must not
+    crash on that (range() rejects a float), and it must self-heal without
+    the user having to resubmit the options form.
+    """
+
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_MUNICIPALITY: "eindhoven"},
+        options={CONF_LOOKAHEAD_DAYS: 10.0, CONF_UPDATE_INTERVAL_MINUTES: 30.0},
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.cure_afvalbeheer.api.CureApiClient.fetch_html",
+        AsyncMock(return_value=html),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state.value == "loaded"
+
+    coordinator = entry.runtime_data
+    assert coordinator.update_interval.total_seconds() == 30 * 60
+
+    registry = er.async_get(hass)
+    status_entry = next(
+        e
+        for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if "_reden_" not in e.unique_id
+    )
+    state = hass.states.get(status_entry.entity_id)
+
+    assert state is not None
+    assert len(state.attributes["upcoming"]) == 10

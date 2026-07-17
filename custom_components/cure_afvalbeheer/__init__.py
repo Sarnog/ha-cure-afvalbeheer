@@ -29,8 +29,11 @@ async def async_setup_entry(
     session = aiohttp_client.async_get_clientsession(hass)
     api = CureApiClient(session)
 
-    update_interval_minutes = entry.options.get(
-        CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES
+    # NumberSelector-backed options always come back as float, regardless
+    # of step/mode; int() protects against a float leaking into
+    # timedelta(minutes=...) and anything else that expects a plain int.
+    update_interval_minutes = int(
+        entry.options.get(CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES)
     )
 
     coordinator = CureDataUpdateCoordinator(

@@ -120,5 +120,11 @@ async def test_options_flow_updates_lookahead_days(
         await hass.async_block_till_done()
 
     assert result2["type"] is FlowResultType.CREATE_ENTRY
+
+    # NumberSelector always coerces to float during schema validation
+    # (regardless of step/mode), so the flow must coerce back to int
+    # before storing - otherwise range(lookahead_days + 1) crashes later.
     assert entry.options[CONF_LOOKAHEAD_DAYS] == 7
+    assert isinstance(entry.options[CONF_LOOKAHEAD_DAYS], int)
     assert entry.options[CONF_UPDATE_INTERVAL_MINUTES] == 30
+    assert isinstance(entry.options[CONF_UPDATE_INTERVAL_MINUTES], int)
