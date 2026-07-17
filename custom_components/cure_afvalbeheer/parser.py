@@ -77,11 +77,16 @@ class CureParser:
             hours=self.opening_hours(),
         )
 
+    def parse_locations(self) -> list[Location]:
+        """Parse all recycling centres."""
+
+        return [
+            self.parse_location(),
+        ]
+
     def parse(self) -> CureData:
         """Parse the complete page."""
 
         return CureData(
-            locations=[
-                self.parse_location(),
-            ],
+            locations=self.parse_locations(),
         )

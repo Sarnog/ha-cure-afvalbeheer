@@ -61,3 +61,21 @@ def test_parse_location():
     assert location.name == "Milieustraat Eindhoven"
     assert location.address is None
     assert len(location.hours) == 6
+
+
+def test_parse_locations():
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    parser = CureParser(html)
+
+    locations = parser.parse_locations()
+
+    assert len(locations) == 1
+
+    location = locations[0]
+
+    assert location.name == "Milieustraat Eindhoven"
+    assert location.address is None
+    assert len(location.hours) == 6
