@@ -152,6 +152,18 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 # Toekomstideeën (nog niet gepland, ter overweging)
 
+- **Navigatieknop** - een knop/actie voor op het dashboard die op een
+  mobiele telefoon een navigatie-app opent (de zelfgekozen app die
+  geïnstalleerd staat, of anders de standaard-app van het toestel) met de
+  route naar de milieustraat, vanaf de actuele locatie van de gebruiker.
+  Waarschijnlijk te realiseren zonder nieuwe Python-code, puur als
+  dashboard-configuratie: een `tap_action` van het type `url` die een
+  generieke maps-link opent (bijv.
+  `https://www.google.com/maps/dir/?api=1&destination=<adres>`) - mobiele
+  besturingssystemen laten de gebruiker daarbij zelf de navigatie-app
+  kiezen, of gebruiken de ingestelde standaard. Kan het al sinds v0.5.0
+  beschikbare `address`-attribuut hergebruiken; zou als extra voorbeeld in
+  README.md passen, naast de bestaande markdown-kaart en automatisering.
 - **Langetermijnstatistieken** - hoe vaak/hoe lang een milieustraat de
   afgelopen periode gesloten was, via HA's recorder/statistics.
 - Kalender-stijl output, een handmatige refresh-actie, reparaties/
@@ -211,7 +223,7 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 ## Home Assistant
 
 - [x] Device (one per municipality config entry)
-- [x] Sensor (one per milieustraat)
+- [x] Sensor (one per recycling centre)
 - [x] DeviceInfo
 
 ## Other
@@ -227,19 +239,19 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
       specific closed dates)
 - [x] Deviation reason exposed as a sensor attribute
 - [x] No separate RSS feed needed - deviations are parsed from the same
-      milieustraat page that is already fetched
+      recycling centre page that is already fetched
 
 ---
 
 # v0.3.0 (done)
 
-- [x] Dedicated reason sensors per milieustraat, today and tomorrow, so an
-      automation can warn a day ahead of a change instead of only once it
-      has already taken effect
+- [x] Dedicated reason sensors per recycling centre, today and tomorrow, so
+      an automation can warn a day ahead of a change instead of only once
+      it has already taken effect
 - [x] `reason` removed from the status sensor's `today` attribute (now
       redundant); kept in each `upcoming[]` entry
-- [x] New milieustraten that Cure adds to a municipality page are detected
-      and get their entities automatically, without a restart
+- [x] New recycling centres that Cure adds to a municipality page are
+      detected and get their entities automatically, without a restart
 - [x] Locations that permanently disappear become `unavailable` instead of
       anything being deleted in code; if still gone after a restart, Home
       Assistant's own entity platform offers the user a removal option for
@@ -293,7 +305,7 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
       `homeassistant.helpers.issue_registry`): a successful fetch that
       returns no locations at all now shows a visible "repair" notification
       in the Home Assistant UI, instead of just a debug log line
-- [x] Two new sensors per milieustraat, "next open" and "next close"
+- [x] Two new sensors per recycling centre, "next open" and "next close"
       (`next_open`/`next_close`, timestamp device class) - already present
       in the very first ChatGPT design ("Derived" section) but never built
 
@@ -314,7 +326,18 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 # Future ideas (not yet planned, for consideration)
 
-- **Long-term statistics** - how often/how long a milieustraat was closed
+- **Navigation button** - a dashboard button/action that, on a mobile
+  phone, opens a navigation app (whichever app the user has installed and
+  picks, or otherwise the device's default) with the route to the
+  recycling centre, from the user's current location. Likely achievable
+  without any new Python code, purely as dashboard configuration: a
+  `tap_action` of type `url` that opens a generic maps link (e.g.
+  `https://www.google.com/maps/dir/?api=1&destination=<address>`) - mobile
+  operating systems let the user pick their own navigation app for that,
+  or use their configured default. Can reuse the `address` attribute
+  already available since v0.5.0; would fit as an extra example in
+  README.md, alongside the existing markdown card and automation.
+- **Long-term statistics** - how often/how long a recycling centre was closed
   over a given period, via HA's recorder/statistics.
 - Calendar-style output, a manual refresh action, repairs/accepted waste
   types/maps/navigation, additional languages - see earlier considerations;

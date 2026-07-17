@@ -304,7 +304,7 @@ Entities only read data from the coordinator.
 # Notices
 
 `notices.py` extracts temporary deviations (heat protocol, closures,
-renovations) from free Dutch text found on the milieustraat page.
+renovations) from free Dutch text found on the recycling centre page.
 
 Contains no BeautifulSoup/HTML code and no Home Assistant imports - it only
 takes plain strings and returns a `Notice` (or `None` when the text does not
@@ -385,8 +385,8 @@ Search in this order:
 Done, without changing the parser architecture:
 
 - multiple municipalities (v0.1.0)
-- temporary closures, heat protocol (v0.2.0) - parsed from the milieustraat
-  page itself; no separate RSS feed turned out to be necessary
+- temporary closures, heat protocol (v0.2.0) - parsed from the recycling
+  centre page itself; no separate RSS feed turned out to be necessary
 - diagnostics, configurable update interval (v0.4.0)
 - address attribute, reconfigure flow, repair issue for a broken parser,
   `next_open`/`next_close` sensors (v0.5.0)

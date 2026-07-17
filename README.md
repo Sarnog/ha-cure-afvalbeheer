@@ -127,13 +127,13 @@ Vereist de HACS-frontendkaart **[card-mod](https://github.com/thomasloven/lovela
 de opmaak (kop centreren, icoon-kleur/animatie) wordt hier via `card_mod`
 toegepast in plaats van inline.
 
-Het voorbeeld hieronder gebruikt "Milieustraat Acht" in Eindhoven; pas **twee
-plekken** aan naar je eigen situatie:
-1. De entity-ID op de regel `{%- set sensor = ... -%}` — vervang
-   `sensor.cure_afvalbeheer_eindhoven_milieustraat_acht` door je eigen sensor
-   (op te zoeken via Ontwikkelaarshulpmiddelen → Staten).
-2. De tekst tussen `<h2>` en `</h2>` — vervang "Milieustraat Acht" door de
-   naam die je op de kaart wilt zien staan.
+Het voorbeeld hieronder gebruikt "Milieustraat Acht" in Eindhoven; pas
+**één plek** aan naar je eigen situatie: de entity-ID op de regel
+`{%- set sensor = ... -%}` — vervang
+`sensor.cure_afvalbeheer_eindhoven_milieustraat_acht` door je eigen sensor
+(op te zoeken via Ontwikkelaarshulpmiddelen → Staten). De koptekst wordt
+automatisch afgeleid uit de naam van die sensor, dus die hoef je nergens
+meer los aan te passen.
 
 ```yaml
 type: markdown
@@ -229,15 +229,22 @@ card_mod:
       }
 ```
 
-De kop staat gecentreerd via `card_mod`. "Vandaag" toont "Gesloten" zodra de
-sluitingstijd is gepasseerd, ook al staat er geen afwijking actief (de
-`na_sluiting`-check vergelijkt het huidige tijdstip met `vandaag.closes`).
-Datums worden via de `datum_nl`-macro in `dd-mm-jjjj`-notatie getoond. Elke
-dag in de lijst krijgt nu een eigen, knipperend waarschuwingsicoon
-(`mdi:alert-outline`) zodra die specifieke dag een `reason` heeft, in plaats
-van één icoon bij een kop die af en toe wisselt — de bijbehorende CSS zorgt
-ervoor dat het icoon los van de tekst staat, zodat regels zonder afwijking
-niet inspringen.
+De koptekst wordt automatisch afgeleid uit de `friendly_name` van de
+bronsensor (alles vanaf het woord "Milieustraat"), en staat gecentreerd via
+`card_mod`. "Vandaag" toont "Gesloten" zodra de sluitingstijd is
+gepasseerd, ook al staat er geen afwijking actief (de `na_sluiting`-check
+vergelijkt het huidige tijdstip met `vandaag.closes`). Zodra de "volgende
+open"- en "volgende gesloten"-sensoren een geldige waarde binnen het
+vooruitkijkvenster hebben, toont de kaart daaronder ook een aftelling:
+"Sluit over: ..." als de milieustraat nu open is, of "Weer open over: ..."
+als die nu gesloten is (in dagen/uren/minuten, via de `aftellen`-macro);
+zonder geldige waarde blijft die regel gewoon weg. Datums worden via de
+`datum_nl`-macro in `dd-mm-jjjj`-notatie getoond. Elke dag in de lijst
+krijgt nu een eigen, knipperend waarschuwingsicoon (`mdi:alert-outline`)
+zodra die specifieke dag een `reason` heeft, in plaats van één icoon bij
+een kop die af en toe wisselt — de bijbehorende CSS zorgt ervoor dat het
+icoon los van de tekst staat, zodat regels zonder afwijking niet
+inspringen.
 
 **Werkt dit automatisch mee met het ingestelde aantal vooruitkijkdagen?** Ja.
 Het aantal dagen dat de integratie toont is instelbaar via **Instellingen →
@@ -333,9 +340,9 @@ separate RSS subscription is needed.
   municipality again if you want multiple devices.
 - Options Flow: number of forecast days configurable (default 5), also
   changeable after installation.
-- DataUpdateCoordinator fetches the chosen municipality's milieustraat page
-  live.
-- One sensor per milieustraat: current status (Open/Closed) and `today`/
+- DataUpdateCoordinator fetches the chosen municipality's recycling centre
+  page live.
+- One sensor per recycling centre: current status (Open/Closed) and `today`/
   `upcoming` attributes for use in a markdown card.
 - Home Assistant brand assets prepared (see `brands/`).
 
@@ -347,11 +354,11 @@ separate RSS subscription is needed.
 
 ### v0.3.0
 
-- Two dedicated "reason" sensors per milieustraat (today/tomorrow) instead
-  of a hidden attribute, so your automations can warn a day ahead of a
-  deviation.
-- New milieustraten that Cure adds to a municipality page appear
-  automatically, without a restart. If a milieustraat permanently
+- Two dedicated "reason" sensors per recycling centre (today/tomorrow)
+  instead of a hidden attribute, so your automations can warn a day ahead
+  of a deviation.
+- New recycling centres that Cure adds to a municipality page appear
+  automatically, without a restart. If a recycling centre permanently
   disappears, its sensors become `unavailable`; if it is still gone after a
   restart, Home Assistant itself offers a removal option.
 
@@ -369,19 +376,19 @@ separate RSS subscription is needed.
 
 ### v0.5.0
 
-- The milieustraat's address is now also available as an `address`
+- The recycling centre's address is now also available as an `address`
   attribute on the status sensor (it was already parsed, but never shown).
 - Reconfigure flow: change the municipality of an existing integration via
   **Settings → Devices & Services → Cure Afvalbeheer → Configure**, without
   removing and re-adding it. Picking a different municipality first asks
   for explicit confirmation — all sensors and their history for the
   current municipality are replaced by sensors for the new one.
-- Two new sensors per milieustraat, **"next open"** and **"next close"**
-  (timestamp), so the next status change is directly usable in automations
-  and on the dashboard instead of buried in an attribute.
+- Two new sensors per recycling centre, **"next open"** and **"next
+  close"** (timestamp), so the next status change is directly usable in
+  automations and on the dashboard instead of buried in an attribute.
 - A visible repair notification in Home Assistant (**Settings → System →
-  Repairs**) if the parser suddenly finds no milieustraat at all anymore,
-  for example due to a change in the Cure website's markup.
+  Repairs**) if the parser suddenly finds no recycling centre at all
+  anymore, for example due to a change in the Cure website's markup.
 
 See ROADMAP.md for what is still planned.
 
@@ -400,12 +407,13 @@ Via HACS:
 - Valkenswaard
 - Geldrop-Mierlo
 
-Milieustraat locations within a municipality are discovered automatically
-from the page; no separate per-location configuration is needed.
+Recycling centre locations within a municipality are discovered
+automatically from the page; no separate per-location configuration is
+needed.
 
 ## Using it on your dashboard
 
-Each milieustraat gets five sensors:
+Each recycling centre gets five sensors:
 
 - **`sensor.<device>_<milieustraat>`** — status `open`/`closed`, with
   `address`, `today` and `upcoming` (the configured forecast days) as
@@ -415,9 +423,9 @@ Each milieustraat gets five sensors:
   the reason (`hitteprotocol`, `verbouwing`, `werkzaamheden` — these values
   are always Dutch, since that is what the integration itself produces).
 - **`sensor.<device>_<milieustraat>_volgende_open`** and
-  **`..._volgende_close`** — timestamp of the next time the milieustraat
-  opens and closes respectively, within the configured forecast window
-  (otherwise `unknown`).
+  **`..._volgende_close`** — timestamp of the next time the recycling
+  centre opens and closes respectively, within the configured forecast
+  window (otherwise `unknown`).
 
 Look up your own entity IDs via **Developer Tools → States** — the examples
 below use those of "Milieustraat Acht" in Eindhoven
@@ -431,116 +439,123 @@ markdown card strips the `style` attribute from HTML (sanitizer), so the
 styling (centered heading, icon colour/animation) is applied here via
 `card_mod` instead of inline.
 
-The example below uses "Milieustraat Acht" in Eindhoven; adjust **two
-spots** for your own situation:
-1. The entity ID on the `{%- set sensor = ... -%}` line — replace
-   `sensor.cure_afvalbeheer_eindhoven_milieustraat_acht` with your own
-   sensor (look it up via Developer Tools → States).
-2. The text between `<h2>` and `</h2>` — replace "Milieustraat Acht" with
-   the name you want shown on the card.
+The example below uses "Milieustraat Acht" in Eindhoven; adjust **one
+spot** for your own situation: the entity ID on the
+`{%- set sensor = ... -%}` line — replace
+`sensor.cure_afvalbeheer_eindhoven_milieustraat_acht` with your own sensor
+(look it up via Developer Tools → States). The heading is derived
+automatically from that sensor's name, so there is nothing else to change
+by hand.
 
 ```yaml
 type: markdown
 content: |
-  {#- Bronsensor en attributen ophalen -#}
+  {#- Fetch the source sensor and its attributes -#}
   {%- set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' -%}
-  {%- set vandaag = state_attr(sensor, 'today') -%}
+  {%- set today = state_attr(sensor, 'today') -%}
   {%- set upcoming = state_attr(sensor, 'upcoming') or [] -%}
-  {#- Naam en hulpsensoren worden afgeleid van de bronsensor hierboven -#}
-  {%- set volledig = state_attr(sensor, 'friendly_name') or '' -%}
-  {#- Alles vóór het woord 'Milieustraat' weglaten (integratie- en apparaatnaam) -#}
-  {%- set pos = (volledig | lower).find('milieustraat') -%}
-  {%- set naam = volledig[pos:] if pos >= 0 else (volledig or 'Milieustraat') -%}
+  {#- The name and helper sensors are derived from the source sensor above -#}
+  {%- set full_name = state_attr(sensor, 'friendly_name') or '' -%}
+  {#- Drop everything before the word 'Milieustraat' (integration and device name) -#}
+  {%- set pos = (full_name | lower).find('milieustraat') -%}
+  {%- set name = full_name[pos:] if pos >= 0 else (full_name or 'Milieustraat') -%}
   {%- set s_open = states(sensor ~ '_volgende_open') -%}
-  {%- set s_dicht = states(sensor ~ '_volgende_gesloten') -%}
-  {#- Is de milieustraat op dit moment daadwerkelijk open? -#}
-  {%- set nu_open = vandaag is not none and not vandaag.closed
-        and vandaag.opens is not none and vandaag.closes is not none
-        and now() >= today_at(vandaag.opens) and now() <= today_at(vandaag.closes) -%}
-  {#- Sluitingstijd voorbij? Dan geldt vandaag als gesloten -#}
-  {%- set na_sluiting = vandaag is not none and not vandaag.closed and vandaag.closes is not none and now() > today_at(vandaag.closes) -%}
-  {#- Alleen de sensor die nu telt hoeft een geldig tijdstip te hebben; zo niet: regel weglaten -#}
+  {%- set s_close = states(sensor ~ '_volgende_gesloten') -%}
+  {#- Is the recycling centre actually open right now? -#}
+  {%- set now_open = today is not none and not today.closed
+        and today.opens is not none and today.closes is not none
+        and now() >= today_at(today.opens) and now() <= today_at(today.closes) -%}
+  {#- Past closing time? Then today counts as closed -#}
+  {%- set past_closing = today is not none and not today.closed and today.closes is not none and now() > today_at(today.closes) -%}
+  {#- Only the sensor that currently matters needs a valid timestamp; skip the line if not -#}
   {%- set d_open = as_datetime(s_open, none) -%}
-  {%- set d_dicht = as_datetime(s_dicht, none) -%}
-  {%- set toon_teller = (d_dicht if nu_open else d_open) is not none -%}
-  {#- Datum van yyyy-mm-dd naar dd-mm-yyyy -#}
-  {%- macro datum_nl(d) -%}
+  {%- set d_close = as_datetime(s_close, none) -%}
+  {%- set show_countdown = (d_close if now_open else d_open) is not none -%}
+  {#- Date from yyyy-mm-dd to dd-mm-yyyy -#}
+  {%- macro format_date(d) -%}
   {%- set s = d | string -%}{{ s[8:10] }}-{{ s[5:7] }}-{{ s[0:4] }}
   {%- endmacro -%}
-  {#- Aftellen naar een timestamp-sensor: de frontend doet dit alleen in entity-rijen, hier zelf rekenen -#}
-  {%- macro aftellen(t) -%}
+  {#- Counting down to a timestamp sensor: the frontend only does this in entity rows, so it's calculated here -#}
+  {%- macro countdown(t) -%}
   {%- set d = as_datetime(t, none) -%}
-  {%- if d is none -%}onbekend
+  {%- if d is none -%}unknown
   {%- else -%}
   {%- set sec = ((d - now()).total_seconds() | int, 0) | max -%}
-  {%- set dg = (sec // 86400) | int -%}
-  {%- set uu = ((sec % 86400) // 3600) | int -%}
-  {%- set mm = ((sec % 3600) // 60) | int -%}
-  {%- if dg > 0 -%}{{ dg }} {{ 'dag' if dg == 1 else 'dagen' }}{% if uu > 0 %} en {{ uu }} uur{% endif %}
-  {%- elif uu > 0 -%}{{ uu }} uur{% if mm > 0 %} en {{ mm }} min{% endif %}
-  {%- elif mm > 0 -%}{{ mm }} min
-  {%- else -%}minder dan een minuut
+  {%- set days = (sec // 86400) | int -%}
+  {%- set hours = ((sec % 86400) // 3600) | int -%}
+  {%- set mins = ((sec % 3600) // 60) | int -%}
+  {%- if days > 0 -%}{{ days }} {{ 'day' if days == 1 else 'days' }}{% if hours > 0 %} and {{ hours }} hour{% if hours != 1 %}s{% endif %}{% endif %}
+  {%- elif hours > 0 -%}{{ hours }} hour{% if hours != 1 %}s{% endif %}{% if mins > 0 %} and {{ mins }} min{% endif %}
+  {%- elif mins > 0 -%}{{ mins }} min
+  {%- else -%}less than a minute
   {%- endif -%}
   {%- endif -%}
   {%- endmacro -%}
-  <h2>{{ naam }}</h2>
+  <h2>{{ name }}</h2>
 
-  **Vandaag:** {% if vandaag is none %}Onbekend{% elif vandaag.closed or na_sluiting %}Gesloten{% else %}Geopend van {{ vandaag.opens }} tot {{ vandaag.closes }}{% endif %}
-  {% if toon_teller %}
-  {% if nu_open %}**Sluit over:** {{ aftellen(s_dicht) }}{% else %}**Weer open over:** {{ aftellen(s_open) }}{% endif %}
+  **Today:** {% if today is none %}Unknown{% elif today.closed or past_closing %}Closed{% else %}Open from {{ today.opens }} to {{ today.closes }}{% endif %}
+  {% if show_countdown %}
+  {% if now_open %}**Closes in:** {{ countdown(s_close) }}{% else %}**Opens again in:** {{ countdown(s_open) }}{% endif %}
   {% endif %}
-  **Openingstijden de komende dagen:**
-  {% for dag in upcoming %}
-  - {% if dag.reason %}<ha-icon icon="mdi:alert-outline"></ha-icon>{% endif %}{{ datum_nl(dag.date) }}: {% if dag.closed %}Gesloten{% else %}Open van {{ dag.opens }} tot {{ dag.closes }}{% endif %}{% if dag.reason %} — {{ dag.reason }}{% endif %}
+  **Opening hours for the coming days:**
+  {% for day in upcoming %}
+  - {% if day.reason %}<ha-icon icon="mdi:alert-outline"></ha-icon>{% endif %}{{ format_date(day.date) }}: {% if day.closed %}Closed{% else %}Open from {{ day.opens }} to {{ day.closes }}{% endif %}{% if day.reason %} — {{ day.reason }}{% endif %}
   {%- endfor %}
 card_mod:
   style:
     ha-markdown $: |
-      /* Kop centreren (style-attribuut werkt niet, sanitizer stript het) */
+      /* Center the heading (style attribute doesn't work, sanitizer strips it) */
       ha-markdown-element h2 {
         text-align: center;
       }
-      /* Bullets en de standaard lijst-inspring weg: het icoon neemt die plek in */
+      /* Remove bullets and the default list indent: the icon takes that space */
       ha-markdown-element ul {
         list-style: none;
-        padding-inline-start: 0 !important;   /* browser zet hier standaard 40px */
+        padding-inline-start: 0 !important;   /* browsers default this to 40px */
         margin-inline-start: 0 !important;
         margin: 0;
       }
-      /* Alle tekstregels dezelfde smalle inspring: precies genoeg voor het icoon */
+      /* Same narrow indent for every line: just enough room for the icon */
       ha-markdown-element p,
       ha-markdown-element li {
-        padding-left: 26px;   /* 20px icoon + 6px lucht */
+        padding-left: 26px;   /* 20px icon + 6px spacing */
       }
-      /* Icoon absoluut in die ruimte, dus buiten de tekstflow: geen inspringing */
+      /* Position the icon absolutely in that space, outside the text flow */
       ha-markdown-element li {
         position: relative;
       }
       ha-markdown-element li ha-icon {
         position: absolute;
         left: 0;
-        top: 1px;              /* fijnafstelling verticaal */
+        top: 1px;              /* fine-tune vertical alignment */
       }
-      /* Waarschuwingsicoon: donkeroranje + knipperen */
+      /* Warning icon: dark orange + blinking */
       ha-markdown-element ha-icon {
         color: darkorange;
         --mdc-icon-size: 20px;
-        vertical-align: text-bottom;   /* icoon netjes op de tekstregel */
-        animation: knipper-alert 1.5s ease-in-out infinite;
+        vertical-align: text-bottom;   /* keep the icon on the text line */
+        animation: blink-alert 1.5s ease-in-out infinite;
       }
-      @keyframes knipper-alert {
+      @keyframes blink-alert {
         50% { opacity: 0.25; }
       }
 ```
 
-The heading is centered via `card_mod`. "Today" shows "Closed" once the
-closing time has passed, even when no deviation is active (the
-`past_closing` check compares the current time against `today.closes`).
-Dates are shown in `dd-mm-yyyy` notation via the `format_date` macro. Every
-day in the list now gets its own blinking warning icon (`mdi:alert-outline`)
-whenever that specific day has a `reason`, instead of a single icon next to
-a heading that occasionally switches — the accompanying CSS keeps the icon
-separate from the text so lines without a deviation do not get indented.
+The heading is derived automatically from the source sensor's
+`friendly_name` (everything from the word "Milieustraat" onward), and is
+centered via `card_mod`. "Today" shows "Closed" once the closing time has
+passed, even when no deviation is active (the `past_closing` check
+compares the current time against `today.closes`). Once the "next open"
+and "next close" sensors have a valid value within the forecast window,
+the card also shows a countdown below that: "Closes in: ..." if the
+recycling centre is currently open, or "Opens again in: ..." if it is
+currently closed (in days/hours/minutes, via the `countdown` macro);
+without a valid value, that line is simply omitted. Dates are shown in
+`dd-mm-yyyy` notation via the `format_date` macro. Every day in the list
+now gets its own blinking warning icon (`mdi:alert-outline`) whenever that
+specific day has a `reason`, instead of a single icon next to a heading
+that occasionally switches — the accompanying CSS keeps the icon separate
+from the text so lines without a deviation do not get indented.
 
 **Does this automatically follow the configured number of forecast days?**
 Yes. The number of days the integration shows is configurable via
@@ -582,7 +597,7 @@ automation:
         data:
           title: "Milieustraat Acht"
           message: >
-            Tomorrow the milieustraat deviates from its normal opening
+            Tomorrow the recycling centre deviates from its normal opening
             hours: {{ trigger.to_state.state }}.
 ```
 
