@@ -152,6 +152,30 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 # Toekomstideeën (nog niet gepland, ter overweging)
 
+- **Maximale robuustheid tegen opmaakwijzigingen van de website** - een
+  wijziging in de HTML-structuur van de Cure-website mag de integratie
+  nooit laten crashen of stilzwijgend verkeerde data tonen. De
+  repair-issue (v0.5.0) meldt een kapotte parser al zichtbaar, maar de
+  sensoren worden op dat moment nog steeds `unavailable`, omdat de
+  coordinator de lege parse-uitkomst gewoon doorzet. Robuuster zou zijn om
+  bij een lege/verdachte parse-uitkomst de laatst bekende goede data aan te
+  houden (sensoren blijven dan bruikbaar, met de repair-issue als
+  duidelijk signaal dat de data mogelijk verouderd is) in plaats van de
+  oude data te overschrijven met niets. Daarnaast: meerdere fallback-
+  selectors per element in `selectors.py` (in plaats van één CSS-selector
+  die meteen breekt zodra Cure iets herindeelt), naar het voorbeeld van de
+  bestaande h3-naar-h1-fallback in `location_addresses()`.
+- **Landelijke uitbreiding** - de integratie op termijn herdopen (en
+  mogelijk ook het logo wijzigen) naar een naam die niet aan Cure gebonden
+  is, om milieustraten van alle Nederlandse gemeentes te ondersteunen, niet
+  alleen de gemeentes die Cure bedient. Een groot traject: andere
+  afvalbeheerders gebruiken andere website-structuren (dus aparte parser-/
+  selector-implementaties per bron, met dezelfde laagverdeling als nu), een
+  domeinwijziging (`cure_afvalbeheer` → iets generieks) is een breaking
+  change voor bestaande gebruikers die een migratiepad nodig heeft, en een
+  nieuw merk/logo dat niet meer aan Cure refereert. Pas te overwegen zodra
+  de huidige Cure-ondersteuning stabiel en volledig is; nog geen concrete
+  aanpak gekozen.
 - **Navigatieknop** - een knop/actie voor op het dashboard die op een
   mobiele telefoon een navigatie-app opent (de zelfgekozen app die
   geïnstalleerd staat, of anders de standaard-app van het toestel) met de
@@ -326,6 +350,28 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 # Future ideas (not yet planned, for consideration)
 
+- **Maximum robustness against website layout changes** - a change in the
+  Cure website's HTML structure should never crash the integration or
+  silently show wrong data. The repair issue (v0.5.0) already surfaces a
+  broken parser visibly, but the sensors still become `unavailable` at
+  that point, because the coordinator passes the empty parse result
+  straight through. It would be more robust to keep the last known good
+  data on an empty/suspicious parse result (sensors stay usable, with the
+  repair issue as a clear signal that the data may be stale) instead of
+  overwriting the old data with nothing. In addition: multiple fallback
+  selectors per element in `selectors.py` (instead of a single CSS
+  selector that breaks the moment Cure reorganises something), following
+  the existing h3-to-h1 fallback in `location_addresses()` as an example.
+- **Nationwide expansion** - eventually rename the integration (and
+  possibly its logo) to something not tied to Cure, to support recycling
+  centres for every Dutch municipality, not just the ones Cure serves. A
+  big undertaking: other waste management providers use different website
+  structures (so separate parser/selector implementations per source,
+  with the same layering as today), a domain rename
+  (`cure_afvalbeheer` → something generic) is a breaking change for
+  existing users that needs a migration path, and a new brand/logo no
+  longer referencing Cure. Only worth considering once the current Cure
+  support is stable and complete; no concrete approach chosen yet.
 - **Navigation button** - a dashboard button/action that, on a mobile
   phone, opens a navigation app (whichever app the user has installed and
   picks, or otherwise the device's default) with the route to the
