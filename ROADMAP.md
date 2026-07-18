@@ -191,6 +191,26 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 ---
 
+# v0.6.2 (klaar)
+
+- [x] Bugfix: een vervolg op de v0.6.1-fix hierboven. `notices()` bepaalt
+      de `location_hint` van een melding door de kop-tekst te vergelijken
+      met de op dát moment geparste locatie-lijst - maar tijdens een
+      kapotte-parser-cyclus is die lijst leeg, dus de hint kon nooit
+      berekend worden, zelfs niet voor een melding die overduidelijk over
+      één specifieke milieustraat gaat. Een `location_hint` van `None`
+      betekent "geldt voor alle locaties" (zie `_notice_applies` in
+      `schedule.py`), dus een melding die alleen over Lodewijkstraat gaat
+      zou zo per ongeluk ook bij Acht getoond worden. Gevonden tijdens
+      dezelfde grondige, hele-repository bug-review als hierboven, ook nu
+      pas bevestigd met een losse reproductietest. De coordinator
+      herberekent de hint nu alsnog tegen de laatst bekende goede locaties
+      zodra hij ontbreekt. `parser.py`'s `_location_hint_for` is hiervoor
+      public gemaakt (`location_hint_for`), zodat de coordinator hem kan
+      hergebruiken.
+
+---
+
 # Toekomstideeën (nog niet gepland, ter overweging)
 
 - **Landelijke uitbreiding** - de integratie op termijn herdopen (en
@@ -400,6 +420,24 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
       v0.6.0 (not by ruff/pytest alone - the bug only became visible
       through a dedicated reproduction test). Only locations stay frozen
       now; notices from the latest fetch are always used.
+
+---
+
+# v0.6.2 (done)
+
+- [x] Bugfix: a follow-up to the v0.6.1 fix above. `notices()` determines
+      a notice's `location_hint` by comparing its heading text against
+      that cycle's parsed location list - but during a broken-parser
+      cycle that list is empty, so the hint could never be computed, even
+      for a notice that clearly names one specific recycling centre. A
+      `location_hint` of `None` means "applies to every location" (see
+      `_notice_applies` in `schedule.py`), so a notice meant only for
+      Lodewijkstraat would incorrectly show up for Acht too. Found during
+      the same thorough, whole-repository bug review as above, again only
+      confirmed with a dedicated reproduction test. The coordinator now
+      re-resolves the hint against the last known good locations whenever
+      it is missing. `parser.py`'s `_location_hint_for` was made public
+      (`location_hint_for`) so the coordinator can reuse it.
 
 ---
 

@@ -108,6 +108,11 @@ gewoon doorgezet (v0.6.0). De meldingen (`notices`) uit diezelfde fetch
 worden wél altijd gebruikt, ook als de locaties bevroren blijven -
 `location_addresses()` en `notices()` gebruiken losstaande selectors, dus
 een opmaakwijziging kan de één breken zonder de ander te raken (v0.6.1).
+Omdat `notices()` de `location_hint` van een melding bepaalt aan de hand
+van de op dát moment geparste (in dit geval lege) locatie-lijst, wordt die
+hint zo nodig herberekend tegen de aangehouden locaties, anders zou een
+melding die maar één milieustraat betreft per ongeluk voor alle locaties
+gaan gelden (v0.6.2).
 
 ---
 
@@ -325,7 +330,11 @@ earlier good data yet, the empty data is passed through as-is (v0.6.0).
 The notices from that same fetch are always used regardless, even while
 locations stay frozen - `location_addresses()` and `notices()` use
 unrelated selectors, so a layout change can break one without affecting
-the other (v0.6.1).
+the other (v0.6.1). Since `notices()` resolves a notice's
+`location_hint` against that same cycle's (in this case empty) parsed
+location list, that hint is re-resolved against the retained locations
+where it is missing, otherwise a notice naming only one recycling centre
+would end up incorrectly applying to all of them (v0.6.2).
 
 ---
 
