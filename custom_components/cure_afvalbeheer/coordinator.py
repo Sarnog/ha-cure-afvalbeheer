@@ -56,19 +56,27 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
 
         if data.locations:
             ir.async_delete_issue(self.hass, DOMAIN, self._no_locations_issue_id)
-        else:
-            LOGGER.error(
-                "No milieustraten found for %s; the Cure page layout may have changed",
+            return data
+
+        LOGGER.error(
+            "No milieustraten found for %s; the Cure page layout may have changed",
+            self.municipality,
+        )
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            self._no_locations_issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key=ISSUE_NO_LOCATIONS_FOUND,
+            translation_placeholders={"municipality": self.municipality},
+        )
+
+        if self.data is not None and self.data.locations:
+            LOGGER.warning(
+                "Keeping last known good data for %s while the parser issue persists",
                 self.municipality,
             )
-            ir.async_create_issue(
-                self.hass,
-                DOMAIN,
-                self._no_locations_issue_id,
-                is_fixable=False,
-                severity=ir.IssueSeverity.ERROR,
-                translation_key=ISSUE_NO_LOCATIONS_FOUND,
-                translation_placeholders={"municipality": self.municipality},
-            )
+            return self.data
 
         return data

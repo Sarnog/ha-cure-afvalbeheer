@@ -114,3 +114,46 @@ async def test_clears_repair_issue_once_locations_reappear(hass) -> None:
     issue_id = f"{ISSUE_NO_LOCATIONS_FOUND}_{entry.entry_id}"
 
     assert issue_registry.async_get_issue(DOMAIN, issue_id) is None
+
+
+async def test_keeps_last_known_good_data_when_locations_disappear(hass) -> None:
+    """A later empty parse must not wipe out already-working sensors."""
+
+    entry = MockConfigEntry()
+
+    location = Location(
+        name="Milieustraat Acht",
+        address="Achtseweg Noord 41",
+        hours=[
+            OpeningHours(
+                day=Weekday.MONDAY, opens="08:30", closes="17:00", closed=False
+            )
+        ],
+    )
+    good_data = CureData(locations=[location])
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = good_data
+
+    coordinator = CureDataUpdateCoordinator(
+        hass=hass,
+        api=api,
+        config_entry=entry,
+        municipality="eindhoven",
+        update_interval_minutes=60,
+    )
+
+    await coordinator.async_refresh()
+
+    assert coordinator.data == good_data
+
+    api.fetch_milieustraat.return_value = CureData(locations=[])
+
+    await coordinator.async_refresh()
+
+    assert coordinator.data == good_data
+
+    issue_registry = ir.async_get(hass)
+    issue_id = f"{ISSUE_NO_LOCATIONS_FOUND}_{entry.entry_id}"
+
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
