@@ -1,9 +1,6 @@
 {
   "name": "Cure Afvalbeheer",
   "country": "NL",
-  "domains": [
-    "cure_afvalbeheer"
-  ],
   "homeassistant": "2026.7.0",
   "render_readme": true
 }

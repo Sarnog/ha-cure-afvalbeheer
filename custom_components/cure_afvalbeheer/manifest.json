@@ -1,19 +1,19 @@
 {
   "domain": "cure_afvalbeheer",
   "name": "Cure Afvalbeheer",
-  "version": "0.6.2",
-  "documentation": "https://github.com/Sarnog/ha-cure-afvalbeheer",
-  "issue_tracker": "https://github.com/Sarnog/ha-cure-afvalbeheer/issues",
   "codeowners": [
     "@Sarnog"
   ],
   "config_flow": true,
+  "documentation": "https://github.com/Sarnog/ha-cure-afvalbeheer",
   "integration_type": "service",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Sarnog/ha-cure-afvalbeheer/issues",
+  "loggers": [
+    "custom_components.cure_afvalbeheer"
+  ],
   "requirements": [
     "beautifulsoup4>=4.13.0"
   ],
-  "loggers": [
-    "custom_components.cure_afvalbeheer"
-  ]
+  "version": "0.6.2"
 }
