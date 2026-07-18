@@ -100,10 +100,14 @@ Verantwoordelijk voor:
 - foutafhandeling
 
 Levert een fetch geen enkele locatie op (na een verder geslaagde
-HTTP-request), dan blijft de laatst bekende goede data staan in plaats van
-overschreven te worden met niets - de repair-issue (zie Repairs) blijft
-wel actief als signaal dat de data mogelijk verouderd is. Is er nog geen
-eerdere goede data, dan wordt de lege data gewoon doorgezet (v0.6.0).
+HTTP-request), dan blijven de laatst bekende goede locaties staan in
+plaats van overschreven te worden met niets - de repair-issue (zie
+Repairs) blijft wel actief als signaal dat de locatiedata mogelijk
+verouderd is. Is er nog geen eerdere goede data, dan wordt de lege data
+gewoon doorgezet (v0.6.0). De meldingen (`notices`) uit diezelfde fetch
+worden wél altijd gebruikt, ook als de locaties bevroren blijven -
+`location_addresses()` en `notices()` gebruiken losstaande selectors, dus
+een opmaakwijziging kan de één breken zonder de ander te raken (v0.6.1).
 
 ---
 
@@ -314,10 +318,14 @@ Responsible for:
 - error handling
 
 If a fetch returns no locations at all (after an otherwise successful
-HTTP request), the last known good data is kept instead of being
+HTTP request), the last known good locations are kept instead of being
 overwritten with nothing - the repair issue (see Repairs) still stays
-active as a signal that the data may be stale. If there is no earlier
-good data yet, the empty data is passed through as-is (v0.6.0).
+active as a signal that the location data may be stale. If there is no
+earlier good data yet, the empty data is passed through as-is (v0.6.0).
+The notices from that same fetch are always used regardless, even while
+locations stay frozen - `location_addresses()` and `notices()` use
+unrelated selectors, so a layout change can break one without affecting
+the other (v0.6.1).
 
 ---
 

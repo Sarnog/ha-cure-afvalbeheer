@@ -176,6 +176,21 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 ---
 
+# v0.6.1 (klaar)
+
+- [x] Bugfix: de v0.6.0-robuustheid hield bij een lege locatie-lijst de
+      **volledige** vorige data aan, inclusief `notices` - maar
+      `location_addresses()` en `notices()` gebruiken losstaande
+      selectors, dus een opmaakwijziging kan de één breken zonder de
+      ander te raken. Een verse, succesvol geparste afwijkingsmelding werd
+      daardoor stilzwijgend vervangen door een verouderde. Gevonden
+      tijdens een actieve, gerichte bug-review na v0.6.0 (niet door
+      ruff/pytest alleen - de bug was pas zichtbaar na een losse
+      reproductietest). Alleen de locaties blijven nu bevroren; de
+      `notices` uit de nieuwste fetch worden altijd gebruikt.
+
+---
+
 # Toekomstideeën (nog niet gepland, ter overweging)
 
 - **Landelijke uitbreiding** - de integratie op termijn herdopen (en
@@ -371,6 +386,20 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 - [x] Navigation button example in the README: a markdown card link that
       uses the `address` attribute to link straight to the user's chosen
       navigation app, with the route to the recycling centre.
+
+---
+
+# v0.6.1 (done)
+
+- [x] Bugfix: the v0.6.0 robustness change kept the **entire** previous
+      data on an empty location list, including `notices` - but
+      `location_addresses()` and `notices()` use unrelated selectors, so a
+      layout change can break one without affecting the other. A fresh,
+      successfully parsed deviation notice was therefore silently replaced
+      by a stale one. Found during an active, targeted bug review after
+      v0.6.0 (not by ruff/pytest alone - the bug only became visible
+      through a dedicated reproduction test). Only locations stay frozen
+      now; notices from the latest fetch are always used.
 
 ---
 
