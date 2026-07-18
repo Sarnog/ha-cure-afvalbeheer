@@ -52,13 +52,27 @@ def section_with_heading(
     soup: BeautifulSoup,
     heading: str,
 ) -> Tag | None:
-    """Return the section that contains the given heading."""
+    """Return the section that contains the given heading.
+
+    Matches case-insensitively, and falls back to the nearest div/article
+    ancestor if there is no <section> wrapper - the heading text is the
+    reliable signal, not the specific container tag Cure happens to use.
+    """
+
+    heading_lower = heading.strip().lower()
 
     for h2 in soup.find_all("h2"):
         text = h2.get_text(" ", strip=True)
 
-        if text == heading:
-            return h2.find_parent("section")
+        if text.lower() != heading_lower:
+            continue
+
+        section = h2.find_parent("section")
+
+        if section is not None:
+            return section
+
+        return h2.find_parent(["div", "article"]) or h2.parent
 
     return None
 
@@ -133,6 +147,10 @@ def closure_notice_section(soup: BeautifulSoup) -> Tag | None:
     A municipality page can have several "textAndMedia" blocks for
     unrelated content (packing tips, etc). An active notice is the only
     one whose heading starts with "Let op!".
+
+    Falls back to any section/div/article with such a heading if no block
+    is tagged data-block="textAndMedia" - the "Let op!" heading text is
+    the reliable signal, not that specific attribute.
     """
 
     for block in soup.find_all(attrs={"data-block": "textAndMedia"}):
@@ -143,5 +161,9 @@ def closure_notice_section(soup: BeautifulSoup) -> Tag | None:
 
         if heading.get_text(strip=True).lower().startswith("let op!"):
             return block
+
+    for heading in soup.find_all("h2"):
+        if heading.get_text(strip=True).lower().startswith("let op!"):
+            return heading.find_parent(["section", "div", "article"]) or heading.parent
 
     return None

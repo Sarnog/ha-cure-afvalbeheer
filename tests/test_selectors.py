@@ -95,3 +95,61 @@ def test_closure_notice_section_returns_none_without_active_notice():
     soup = BeautifulSoup(html, "html.parser")
 
     assert selectors.closure_notice_section(soup) is None
+
+
+def test_closure_notice_section_falls_back_without_data_block_attribute():
+    """If Cure drops the data-block attribute, the "Let op!" text still matters."""
+
+    html = """
+    <html><body>
+    <div class="content-block">
+        <h2>Let op! Milieustraat Valkenswaard dicht i.v.m. werkzaamheden.</h2>
+        <p>Dinsdag 30 juni 2026</p>
+    </div>
+    </body></html>
+    """
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    section = selectors.closure_notice_section(soup)
+
+    assert section is not None
+    assert section.find("h2").get_text(strip=True).startswith("Let op!")
+
+
+def test_section_with_heading_matches_case_insensitively():
+    html = """
+    <html><body>
+    <section>
+        <h2>openingstijden</h2>
+        <p>Ma 08:30 - 17:00</p>
+    </section>
+    </body></html>
+    """
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    section = selectors.section_with_heading(soup, "Openingstijden")
+
+    assert section is not None
+    assert section.find("p").get_text(strip=True) == "Ma 08:30 - 17:00"
+
+
+def test_section_with_heading_falls_back_to_div_wrapper():
+    """If Cure wraps the heading in a <div> instead of <section>, still find it."""
+
+    html = """
+    <html><body>
+    <div>
+        <h2>Openingstijden</h2>
+        <p>Ma 08:30 - 17:00</p>
+    </div>
+    </body></html>
+    """
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    section = selectors.section_with_heading(soup, "Openingstijden")
+
+    assert section is not None
+    assert section.find("p").get_text(strip=True) == "Ma 08:30 - 17:00"
