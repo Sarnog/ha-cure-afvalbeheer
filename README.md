@@ -290,6 +290,31 @@ automation:
             {{ trigger.to_state.state }}.
 ```
 
+### Voorbeeld: navigatie-knop
+
+Gebruikt het `address`-attribuut om op een mobiele telefoon rechtstreeks
+naar de gekozen (of standaard) navigatie-app te linken, met de route naar
+de milieustraat. Pas **één plek** aan: de entity-ID op de regel
+`{%- set sensor = ... -%}`.
+
+```yaml
+type: markdown
+content: |
+  {%- set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' -%}
+  {%- set adres = state_attr(sensor, 'address') -%}
+  [🧭 Route naar Milieustraat Acht](https://www.google.com/maps/dir/?api=1&destination={{ adres | urlencode }})
+```
+
+Tikken op de link opent op een mobiele telefoon het OS-brede keuzemenu
+voor navigatie-apps (of direct de ingestelde standaard-app), met de route
+vanaf de huidige locatie van de gebruiker — dat gedrag regelt het
+besturingssysteem zelf bij een `maps/dir`-link, niet de integratie. Er is
+geen extra HACS-kaart voor nodig: de link staat gewoon in dezelfde
+markdown-kaart als de andere voorbeelden, zodat de Jinja-templating
+gegarandeerd werkt (in tegenstelling tot een `tap_action: url` met een
+getemplatete URL, wat standaard Lovelace-kaarten niet betrouwbaar
+ondersteunen).
+
 ## Architectuur
 
 Zie:
@@ -600,6 +625,29 @@ automation:
             Tomorrow the recycling centre deviates from its normal opening
             hours: {{ trigger.to_state.state }}.
 ```
+
+### Example: navigation button
+
+Uses the `address` attribute to link straight to a navigation app on a
+mobile phone, with the route to the recycling centre. Adjust **one
+spot**: the entity ID on the `{%- set sensor = ... -%}` line.
+
+```yaml
+type: markdown
+content: |
+  {%- set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' -%}
+  {%- set address = state_attr(sensor, 'address') -%}
+  [🧭 Route to Milieustraat Acht](https://www.google.com/maps/dir/?api=1&destination={{ address | urlencode }})
+```
+
+Tapping the link on a mobile phone opens the OS-wide navigation app
+chooser (or the configured default app directly), with the route from the
+user's current location - the operating system handles that behaviour for
+a `maps/dir` link, not the integration. No extra HACS card is needed: the
+link just lives in the same markdown card style as the other examples, so
+the Jinja templating is guaranteed to work (unlike a `tap_action: url`
+with a templated URL, which standard Lovelace cards don't reliably
+support).
 
 ## Architecture
 

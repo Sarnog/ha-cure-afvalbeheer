@@ -150,21 +150,34 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 ---
 
+# v0.6.0 (klaar)
+
+- [x] Coordinator: bij een lege/verdachte parse-uitkomst (na een geslaagde
+      fetch) wordt de laatst bekende goede data aangehouden in plaats van
+      overschreven met niets - de sensoren blijven dus bruikbaar, met de
+      al bestaande repair-issue (v0.5.0) als duidelijk signaal dat de data
+      mogelijk verouderd is. Is er nog geen eerdere goede data (allereerste
+      fetch na opstarten mislukt al), dan blijft het gedrag ongewijzigd.
+- [x] Fallback-selectors in `selectors.py`: `section_with_heading` matcht
+      nu hoofdletterongevoelig en valt terug op een `<div>`/`<article>`-
+      ouder als er geen `<section>`-wrapper is; `closure_notice_section`
+      valt terug op elk element met een "Let op!"-kop als er geen blok met
+      `data-block="textAndMedia"` (meer) bestaat - naar het voorbeeld van
+      de bestaande h3-naar-h1-fallback in `location_addresses()`.
+      Bewust géén fallback voor `news_heading`: zonder het
+      `data-block="newsBlock"`-anker is er geen betrouwbaar inhoudelijk
+      onderscheidingskenmerk op selector-niveau (de content-validatie
+      gebeurt pas later in `notices.py`), dus zou een fallback moeten
+      gokken met een reëel risico op false positives.
+- [x] Navigatieknop-voorbeeld in README: een markdown-kaart-link die het
+      `address`-attribuut gebruikt om op een mobiele telefoon rechtstreeks
+      naar de gekozen navigatie-app te linken, met de route naar de
+      milieustraat.
+
+---
+
 # Toekomstideeën (nog niet gepland, ter overweging)
 
-- **Maximale robuustheid tegen opmaakwijzigingen van de website** - een
-  wijziging in de HTML-structuur van de Cure-website mag de integratie
-  nooit laten crashen of stilzwijgend verkeerde data tonen. De
-  repair-issue (v0.5.0) meldt een kapotte parser al zichtbaar, maar de
-  sensoren worden op dat moment nog steeds `unavailable`, omdat de
-  coordinator de lege parse-uitkomst gewoon doorzet. Robuuster zou zijn om
-  bij een lege/verdachte parse-uitkomst de laatst bekende goede data aan te
-  houden (sensoren blijven dan bruikbaar, met de repair-issue als
-  duidelijk signaal dat de data mogelijk verouderd is) in plaats van de
-  oude data te overschrijven met niets. Daarnaast: meerdere fallback-
-  selectors per element in `selectors.py` (in plaats van één CSS-selector
-  die meteen breekt zodra Cure iets herindeelt), naar het voorbeeld van de
-  bestaande h3-naar-h1-fallback in `location_addresses()`.
 - **Landelijke uitbreiding** - de integratie op termijn herdopen (en
   mogelijk ook het logo wijzigen) naar een naam die niet aan Cure gebonden
   is, om milieustraten van alle Nederlandse gemeentes te ondersteunen, niet
@@ -176,18 +189,6 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
   nieuw merk/logo dat niet meer aan Cure refereert. Pas te overwegen zodra
   de huidige Cure-ondersteuning stabiel en volledig is; nog geen concrete
   aanpak gekozen.
-- **Navigatieknop** - een knop/actie voor op het dashboard die op een
-  mobiele telefoon een navigatie-app opent (de zelfgekozen app die
-  geïnstalleerd staat, of anders de standaard-app van het toestel) met de
-  route naar de milieustraat, vanaf de actuele locatie van de gebruiker.
-  Waarschijnlijk te realiseren zonder nieuwe Python-code, puur als
-  dashboard-configuratie: een `tap_action` van het type `url` die een
-  generieke maps-link opent (bijv.
-  `https://www.google.com/maps/dir/?api=1&destination=<adres>`) - mobiele
-  besturingssystemen laten de gebruiker daarbij zelf de navigatie-app
-  kiezen, of gebruiken de ingestelde standaard. Kan het al sinds v0.5.0
-  beschikbare `address`-attribuut hergebruiken; zou als extra voorbeeld in
-  README.md passen, naast de bestaande markdown-kaart en automatisering.
 - **Langetermijnstatistieken** - hoe vaak/hoe lang een milieustraat de
   afgelopen periode gesloten was, via HA's recorder/statistics.
 - Kalender-stijl output, een handmatige refresh-actie, reparaties/
@@ -348,20 +349,33 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
 
 ---
 
+# v0.6.0 (done)
+
+- [x] Coordinator: on an empty/suspicious parse result (after a successful
+      fetch), the last known good data is now kept instead of being
+      overwritten with nothing - sensors stay usable, with the existing
+      repair issue (v0.5.0) as a clear signal that the data may be stale.
+      If there is no earlier good data yet (the very first fetch after
+      startup already fails), behaviour is unchanged.
+- [x] Fallback selectors in `selectors.py`: `section_with_heading` now
+      matches case-insensitively and falls back to a `<div>`/`<article>`
+      ancestor if there is no `<section>` wrapper; `closure_notice_section`
+      falls back to any element with a "Let op!" heading if no block with
+      `data-block="textAndMedia"` exists (anymore) - following the
+      existing h3-to-h1 fallback in `location_addresses()` as an example.
+      Deliberately no fallback for `news_heading`: without the
+      `data-block="newsBlock"` anchor there is no reliable content signal
+      at the selector level (content validation happens later in
+      `notices.py`), so a fallback would have to guess, with a real risk
+      of false positives.
+- [x] Navigation button example in the README: a markdown card link that
+      uses the `address` attribute to link straight to the user's chosen
+      navigation app, with the route to the recycling centre.
+
+---
+
 # Future ideas (not yet planned, for consideration)
 
-- **Maximum robustness against website layout changes** - a change in the
-  Cure website's HTML structure should never crash the integration or
-  silently show wrong data. The repair issue (v0.5.0) already surfaces a
-  broken parser visibly, but the sensors still become `unavailable` at
-  that point, because the coordinator passes the empty parse result
-  straight through. It would be more robust to keep the last known good
-  data on an empty/suspicious parse result (sensors stay usable, with the
-  repair issue as a clear signal that the data may be stale) instead of
-  overwriting the old data with nothing. In addition: multiple fallback
-  selectors per element in `selectors.py` (instead of a single CSS
-  selector that breaks the moment Cure reorganises something), following
-  the existing h3-to-h1 fallback in `location_addresses()` as an example.
 - **Nationwide expansion** - eventually rename the integration (and
   possibly its logo) to something not tied to Cure, to support recycling
   centres for every Dutch municipality, not just the ones Cure serves. A
@@ -372,17 +386,6 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
   existing users that needs a migration path, and a new brand/logo no
   longer referencing Cure. Only worth considering once the current Cure
   support is stable and complete; no concrete approach chosen yet.
-- **Navigation button** - a dashboard button/action that, on a mobile
-  phone, opens a navigation app (whichever app the user has installed and
-  picks, or otherwise the device's default) with the route to the
-  recycling centre, from the user's current location. Likely achievable
-  without any new Python code, purely as dashboard configuration: a
-  `tap_action` of type `url` that opens a generic maps link (e.g.
-  `https://www.google.com/maps/dir/?api=1&destination=<address>`) - mobile
-  operating systems let the user pick their own navigation app for that,
-  or use their configured default. Can reuse the `address` attribute
-  already available since v0.5.0; would fit as an extra example in
-  README.md, alongside the existing markdown card and automation.
 - **Long-term statistics** - how often/how long a recycling centre was closed
   over a given period, via HA's recorder/statistics.
 - Calendar-style output, a manual refresh action, repairs/accepted waste

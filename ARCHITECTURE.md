@@ -58,6 +58,13 @@ Bevat alle HTML-selectors.
 
 Geen Home Assistant-imports.
 
+Waar mogelijk hebben selectors een structurele fallback naast de
+inhoudelijke check: als een specifieke tag/attribuut verdwijnt door een
+opmaakwijziging, blijft het onderscheidende kenmerk (de kop-tekst) leidend
+in plaats van meteen `None` terug te geven. Zie `location_addresses()`'s
+h3-naar-h1-fallback in `parser.py`, en `section_with_heading`/
+`closure_notice_section` in `selectors.py` (v0.6.0).
+
 ---
 
 # Parser
@@ -91,6 +98,12 @@ Verantwoordelijk voor:
 - update-intervallen
 - retry-logica
 - foutafhandeling
+
+Levert een fetch geen enkele locatie op (na een verder geslaagde
+HTTP-request), dan blijft de laatst bekende goede data staan in plaats van
+overschreven te worden met niets - de repair-issue (zie Repairs) blijft
+wel actief als signaal dat de data mogelijk verouderd is. Is er nog geen
+eerdere goede data, dan wordt de lege data gewoon doorgezet (v0.6.0).
 
 ---
 
@@ -193,6 +206,8 @@ Klaar, zonder de parser-architectuur te wijzigen:
 - diagnostics, configureerbaar update-interval (v0.4.0)
 - adres-attribuut, reconfigure flow, repair-issue bij een kapotte parser,
   `next_open`/`next_close`-sensoren (v0.5.0)
+- robuustheid tegen opmaakwijzigingen (laatst bekende goede data aanhouden,
+  fallback-selectors), navigatieknop-voorbeeld (v0.6.0)
 
 Nog te ondersteunen:
 
@@ -257,6 +272,13 @@ Contains all HTML selectors.
 
 No Home Assistant imports.
 
+Where possible, selectors have a structural fallback alongside the
+content check: if a specific tag/attribute disappears due to a layout
+change, the distinguishing signal (the heading text) stays authoritative
+instead of immediately returning `None`. See `location_addresses()`'s
+h3-to-h1 fallback in `parser.py`, and `section_with_heading`/
+`closure_notice_section` in `selectors.py` (v0.6.0).
+
 ---
 
 # Parser
@@ -290,6 +312,12 @@ Responsible for:
 - update intervals
 - retry logic
 - error handling
+
+If a fetch returns no locations at all (after an otherwise successful
+HTTP request), the last known good data is kept instead of being
+overwritten with nothing - the repair issue (see Repairs) still stays
+active as a signal that the data may be stale. If there is no earlier
+good data yet, the empty data is passed through as-is (v0.6.0).
 
 ---
 
@@ -390,6 +418,8 @@ Done, without changing the parser architecture:
 - diagnostics, configurable update interval (v0.4.0)
 - address attribute, reconfigure flow, repair issue for a broken parser,
   `next_open`/`next_close` sensors (v0.5.0)
+- robustness against layout changes (keep last known good data, fallback
+  selectors), navigation button example (v0.6.0)
 
 Still to support:
 
