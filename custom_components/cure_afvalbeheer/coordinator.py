@@ -74,9 +74,10 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
 
         if self.data is not None and self.data.locations:
             LOGGER.warning(
-                "Keeping last known good data for %s while the parser issue persists",
+                "Keeping last known good locations for %s while the parser "
+                "issue persists; still using freshly parsed notices",
                 self.municipality,
             )
-            return self.data
+            return CureData(locations=self.data.locations, notices=data.notices)
 
         return data

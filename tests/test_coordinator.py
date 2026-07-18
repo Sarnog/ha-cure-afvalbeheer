@@ -11,7 +11,12 @@ from custom_components.cure_afvalbeheer.coordinator import (
     CureDataUpdateCoordinator,
 )
 from custom_components.cure_afvalbeheer.exceptions import CureApiError
-from custom_components.cure_afvalbeheer.models import CureData, Location, OpeningHours
+from custom_components.cure_afvalbeheer.models import (
+    CureData,
+    Location,
+    Notice,
+    OpeningHours,
+)
 from custom_components.cure_afvalbeheer.weekday import Weekday
 
 
@@ -157,3 +162,52 @@ async def test_keeps_last_known_good_data_when_locations_disappear(hass) -> None
     issue_id = f"{ISSUE_NO_LOCATIONS_FOUND}_{entry.entry_id}"
 
     assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
+
+
+async def test_uses_freshly_parsed_notices_while_locations_are_kept_stale(
+    hass,
+) -> None:
+    """Notices and locations break independently - don't freeze both.
+
+    location_addresses() and notices() use unrelated selectors, so a
+    layout change can break one while the other still parses fine. If
+    locations disappear, old locations are kept, but a notice found in
+    the same (otherwise broken) fetch must still be used - it should not
+    be silently replaced by a stale notice from before the breakage.
+    """
+
+    entry = MockConfigEntry()
+
+    location = Location(
+        name="Milieustraat Acht",
+        address="Achtseweg Noord 41",
+        hours=[
+            OpeningHours(
+                day=Weekday.MONDAY, opens="08:30", closes="17:00", closed=False
+            )
+        ],
+    )
+    old_notice = Notice(reason="oud", title="Let op!", closed=True)
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = CureData(
+        locations=[location], notices=[old_notice]
+    )
+
+    coordinator = CureDataUpdateCoordinator(
+        hass=hass,
+        api=api,
+        config_entry=entry,
+        municipality="eindhoven",
+        update_interval_minutes=60,
+    )
+
+    await coordinator.async_refresh()
+
+    new_notice = Notice(reason="nieuw", title="Let op!", closed=True)
+    api.fetch_milieustraat.return_value = CureData(locations=[], notices=[new_notice])
+
+    await coordinator.async_refresh()
+
+    assert coordinator.data.locations == [location]
+    assert coordinator.data.notices == [new_notice]
