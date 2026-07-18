@@ -21,7 +21,7 @@ from .parsers import (
 )
 
 
-def _location_hint_for(heading: str, locations: list[Location]) -> str | None:
+def location_hint_for(heading: str, locations: list[Location]) -> str | None:
     """Return the single location name mentioned in heading, if any.
 
     Only the heading is checked, not the full notice body: a renovation
@@ -184,7 +184,7 @@ class CureParser:
                 closure = parse_closure_notice(closure_heading_text, body_text, today)
 
                 if closure is not None:
-                    closure.location_hint = _location_hint_for(
+                    closure.location_hint = location_hint_for(
                         closure_heading_text, locations
                     )
                     result.append(closure)

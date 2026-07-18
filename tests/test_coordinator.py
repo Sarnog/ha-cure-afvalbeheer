@@ -211,3 +211,51 @@ async def test_uses_freshly_parsed_notices_while_locations_are_kept_stale(
 
     assert coordinator.data.locations == [location]
     assert coordinator.data.notices == [new_notice]
+
+
+async def test_recovers_notice_location_hint_using_stale_locations(hass) -> None:
+    """A notice's location_hint must still resolve when locations are stale.
+
+    Notice.location_hint is normally resolved against that same cycle's
+    freshly parsed locations (see parser.py::location_hint_for). If
+    locations parsing is broken this cycle, that list is empty, so the
+    hint can never be computed - without a fix-up, a notice meant for one
+    location would silently apply to every location instead (a missing
+    hint means "applies everywhere", per schedule.py::_notice_applies).
+    """
+
+    entry = MockConfigEntry()
+
+    acht = Location(name="Milieustraat Acht", address="x", hours=[])
+    lodewijkstraat = Location(name="Milieustraat Lodewijkstraat", address="y", hours=[])
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = CureData(locations=[acht, lodewijkstraat])
+
+    coordinator = CureDataUpdateCoordinator(
+        hass=hass,
+        api=api,
+        config_entry=entry,
+        municipality="eindhoven",
+        update_interval_minutes=60,
+    )
+
+    await coordinator.async_refresh()
+
+    # Simulates locations parsing having failed this cycle: notices() is
+    # called with an empty locations list internally, so the hint could not
+    # be resolved even though the heading names a specific location.
+    hintless_notice = Notice(
+        reason="werkzaamheden",
+        title="Let op! Milieustraat Lodewijkstraat dicht i.v.m. werkzaamheden.",
+        closed=True,
+        location_hint=None,
+    )
+    api.fetch_milieustraat.return_value = CureData(
+        locations=[], notices=[hintless_notice]
+    )
+
+    await coordinator.async_refresh()
+
+    assert coordinator.data.locations == [acht, lodewijkstraat]
+    assert coordinator.data.notices[0].location_hint == "Milieustraat Lodewijkstraat"

@@ -14,6 +14,7 @@ from .const import DOMAIN, ISSUE_NO_LOCATIONS_FOUND, NAME
 from .exceptions import CureApiError
 from .logger import LOGGER
 from .models import CureData
+from .parser import location_hint_for
 
 
 class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
@@ -78,6 +79,18 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
                 "issue persists; still using freshly parsed notices",
                 self.municipality,
             )
+
+            # Notices are parsed against this cycle's (empty) locations, so
+            # any location-specific hint was lost. Re-resolve it against the
+            # locations we are falling back to, otherwise a notice meant for
+            # one location would apply to all of them (a missing hint means
+            # "applies everywhere", see schedule.py::_notice_applies).
+            for notice in data.notices:
+                if notice.location_hint is None:
+                    notice.location_hint = location_hint_for(
+                        notice.title, self.data.locations
+                    )
+
             return CureData(locations=self.data.locations, notices=data.notices)
 
         return data
