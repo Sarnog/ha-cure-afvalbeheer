@@ -6,6 +6,13 @@
 
 Een custom Home Assistant integratie voor Cure Afvalbeheer.
 
+[![Open je Home Assistant-installatie en open deze repository binnen de Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&repository=ha-cure-afvalbeheer&category=integration)
+
+Zolang deze repository nog niet is opgenomen in de HACS-standaardlijst
+(zie de openstaande PR in ROADMAP.md), voegt deze knop de repository toe
+als custom repository in HACS — je hoeft de URL dus niet zelf over te
+typen.
+
 ## Doel
 
 Deze integratie toont de actuele openingstijden van de milieustraten van een
@@ -340,6 +347,12 @@ MIT
 # Cure Afvalbeheer for Home Assistant
 
 A custom Home Assistant integration for Cure Afvalbeheer.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&repository=ha-cure-afvalbeheer&category=integration)
+
+Until this repository is included in the HACS default store (see the
+pending PR in ROADMAP.md), this button adds it as a custom repository in
+HACS - no need to type the URL in yourself.
 
 ## Purpose
 

@@ -211,6 +211,21 @@ Het project streeft ernaar de Home Assistant Integration Quality Scale te volgen
 
 ---
 
+# Publicatie
+
+- [x] Repository klaargemaakt voor opname in de HACS-standaardlijst: een
+      volledige MIT `LICENSE`, de `hacs`- en `hassfest`-validatie-workflows
+      onder `.github/workflows/`, GitHub-topics en een correcte
+      beschrijving, en fixes voor de sleutelvolgorde in `manifest.json` en
+      een niet (meer) toegestane sleutel in `hacs.json` - allemaal pas
+      ontdekt door de workflows daadwerkelijk te laten draaien.
+- [ ] PR ingediend bij `hacs/default` om de integratie zonder handmatige
+      "custom repository"-toevoeging vindbaar te maken in HACS:
+      [hacs/default#9336](https://github.com/hacs/default/pull/9336) -
+      wacht op review.
+
+---
+
 # Toekomstideeën (nog niet gepland, ter overweging)
 
 - **Landelijke uitbreiding** - de integratie op termijn herdopen (en
@@ -438,6 +453,21 @@ The project aims to follow the Home Assistant Integration Quality Scale and be s
       re-resolves the hint against the last known good locations whenever
       it is missing. `parser.py`'s `_location_hint_for` was made public
       (`location_hint_for`) so the coordinator can reuse it.
+
+---
+
+# Publishing
+
+- [x] Repository prepared for inclusion in the HACS default store: a full
+      MIT `LICENSE`, the `hacs` and `hassfest` validation workflows under
+      `.github/workflows/`, GitHub topics and a proper description, and
+      fixes for the key ordering in `manifest.json` and a no-longer-allowed
+      key in `hacs.json` - all only discovered by actually running the
+      workflows.
+- [ ] PR submitted to `hacs/default` to make the integration discoverable
+      in HACS without a manual "custom repository" add:
+      [hacs/default#9336](https://github.com/hacs/default/pull/9336) -
+      awaiting review.
 
 ---
 
