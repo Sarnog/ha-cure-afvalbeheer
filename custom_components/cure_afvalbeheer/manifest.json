@@ -1,7 +1,7 @@
 {
   "domain": "cure_afvalbeheer",
   "name": "Cure Afvalbeheer",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "documentation": "https://github.com/Sarnog/ha-cure-afvalbeheer",
   "issue_tracker": "https://github.com/Sarnog/ha-cure-afvalbeheer/issues",
   "codeowners": [
