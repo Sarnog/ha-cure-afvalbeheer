@@ -498,112 +498,109 @@ by hand.
 ```yaml
 type: markdown
 content: >-
-  {#- Bronsensor en attributen ophalen -#}
+  {#- Fetch the source sensor and its attributes -#}
   {%- set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' -%}
-  {%- set vandaag = state_attr(sensor, 'today') -%}
+  {%- set today = state_attr(sensor, 'today') -%}
   {%- set upcoming = state_attr(sensor, 'upcoming') or [] -%}
-  {%- set adres = state_attr(sensor, 'address') -%}
-  {#- Naam en hulpsensoren worden afgeleid van de bronsensor hierboven -#}
-  {%- set volledig = state_attr(sensor, 'friendly_name') or '' -%}
-  {#- Alles vóór het woord 'Milieustraat' weglaten (integratie- en apparaatnaam)
-  -#}
-  {%- set pos = (volledig | lower).find('milieustraat') -%}
-  {%- set naam = volledig[pos:] if pos >= 0 else (volledig or 'Milieustraat')
+  {%- set address = state_attr(sensor, 'address') -%}
+  {#- The name and helper sensors are derived from the source sensor above -#}
+  {%- set full_name = state_attr(sensor, 'friendly_name') or '' -%}
+  {#- Drop everything before the word 'Milieustraat' (integration and device
+  name) -#}
+  {%- set pos = (full_name | lower).find('milieustraat') -%}
+  {%- set name = full_name[pos:] if pos >= 0 else (full_name or 'Milieustraat')
   -%}
   {%- set s_open = states(sensor ~ '_volgende_open') -%}
-  {%- set s_dicht = states(sensor ~ '_volgende_gesloten') -%}
-  {#- Is de milieustraat op dit moment daadwerkelijk open? -#}
-  {%- set nu_open = vandaag is not none and not vandaag.closed
-        and vandaag.opens is not none and vandaag.closes is not none
-        and now() >= today_at(vandaag.opens) and now() <= today_at(vandaag.closes) -%}
-  {#- Sluitingstijd voorbij? Dan geldt vandaag als gesloten -#}
-  {%- set na_sluiting = vandaag is not none and not vandaag.closed and
-  vandaag.closes is not none and now() > today_at(vandaag.closes) -%}
-  {#- Alleen de sensor die nu telt hoeft een geldig tijdstip te hebben; zo niet:
-  regel weglaten -#}
+  {%- set s_close = states(sensor ~ '_volgende_gesloten') -%}
+  {#- Is the recycling centre actually open right now? -#}
+  {%- set now_open = today is not none and not today.closed
+        and today.opens is not none and today.closes is not none
+        and now() >= today_at(today.opens) and now() <= today_at(today.closes) -%}
+  {#- Past closing time? Then today counts as closed -#}
+  {%- set past_closing = today is not none and not today.closed and
+  today.closes is not none and now() > today_at(today.closes) -%}
+  {#- Only the sensor that currently matters needs a valid timestamp; skip the
+  line if not -#}
   {%- set d_open = as_datetime(s_open, none) -%}
-  {%- set d_dicht = as_datetime(s_dicht, none) -%}
-  {%- set toon_teller = (d_dicht if nu_open else d_open) is not none -%}
-  {#- Datum van yyyy-mm-dd naar dd-mm-yyyy -#}
-  {%- macro datum_nl(d) -%}
+  {%- set d_close = as_datetime(s_close, none) -%}
+  {%- set show_countdown = (d_close if now_open else d_open) is not none -%}
+  {#- Date from yyyy-mm-dd to dd-mm-yyyy -#}
+  {%- macro format_date(d) -%}
   {%- set s = d | string -%}{{ s[8:10] }}-{{ s[5:7] }}-{{ s[0:4] }}
   {%- endmacro -%}
-  {#- Aftellen naar een timestamp-sensor: de frontend doet dit alleen in
-  entity-rijen, hier zelf rekenen -#}
-  {%- macro aftellen(t) -%}
+  {#- Counting down to a timestamp sensor: the frontend only does this in
+  entity rows, so it's calculated here -#}
+  {%- macro countdown(t) -%}
   {%- set d = as_datetime(t, none) -%}
-  {%- if d is none -%}onbekend
+  {%- if d is none -%}unknown
   {%- else -%}
   {%- set sec = ((d - now()).total_seconds() | int, 0) | max -%}
-  {%- set dg = (sec // 86400) | int -%}
-  {%- set uu = ((sec % 86400) // 3600) | int -%}
-  {%- set mm = ((sec % 3600) // 60) | int -%}
-  {%- if dg > 0 -%}{{ dg }} {{ 'dag' if dg == 1 else 'dagen' }}{% if uu > 0 %}
-  en {{ uu }} uur{% endif %}
-  {%- elif uu > 0 -%}{{ uu }} uur{% if mm > 0 %} en {{ mm }} min{% endif %}
-  {%- elif mm > 0 -%}{{ mm }} min
-  {%- else -%}minder dan een minuut
+  {%- set days = (sec // 86400) | int -%}
+  {%- set hours = ((sec % 86400) // 3600) | int -%}
+  {%- set mins = ((sec % 3600) // 60) | int -%}
+  {%- if days > 0 -%}{{ days }} {{ 'day' if days == 1 else 'days' }}{% if hours > 0 %}
+  and {{ hours }} hour{% if hours != 1 %}s{% endif %}{% endif %}
+  {%- elif hours > 0 -%}{{ hours }} hour{% if hours != 1 %}s{% endif %}{% if mins > 0 %} and {{ mins }} min{% endif %}
+  {%- elif mins > 0 -%}{{ mins }} min
+  {%- else -%}less than a minute
   {%- endif -%}
   {%- endif -%}
   {%- endmacro -%}
-  <h2>{{ naam }}</h2>
+  <h2>{{ name }}</h2>
 
 
-  **Vandaag:** {% if vandaag is none %}Onbekend{% elif vandaag.closed or
-  na_sluiting %}Gesloten{% else %}Geopend van {{ vandaag.opens }} tot {{
-  vandaag.closes }}{% endif %}
+  **Today:** {% if today is none %}Unknown{% elif today.closed or
+  past_closing %}Closed{% else %}Open from {{ today.opens }} to {{
+  today.closes }}{% endif %}
 
-  {% if toon_teller %}
-  {% if nu_open %}**Sluit over:** {{ aftellen(s_dicht) }}{%
-  else %}**Weer open over:** {{ aftellen(s_open) }}{% endif %}
+  {% if show_countdown %}
+  {% if now_open %}**Closes in:** {{ countdown(s_close) }}{%
+  else %}**Opens again in:** {{ countdown(s_open) }}{% endif %}
 
   {% endif %}
-  {% if adres %}
+  {% if address %}
 
-  [🧭 Route naar {{ naam
-  }}](https://www.google.com/maps/dir/?api=1&destination={{ adres | urlencode
+  [🧭 Route to {{ name
+  }}](https://www.google.com/maps/dir/?api=1&destination={{ address | urlencode
   }})
 
   {% endif %}
-  **Openingstijden de komende dagen:**
-  {% for dag in upcoming %}
+  **Opening hours for the coming days:**
+  {% for day in upcoming %}
 
-  - {% if dag.reason %}<ha-icon icon="mdi:alert-outline"></ha-icon>{% endif %}{{
-  datum_nl(dag.date) }}: {% if dag.closed %}Gesloten{% else %}Open van {{
-  dag.opens }} tot {{ dag.closes }}{% endif %}{% if dag.reason %} — {{
-  dag.reason }}{% endif %}
+  - {% if day.reason %}<ha-icon icon="mdi:alert-outline"></ha-icon>{% endif %}{{
+  format_date(day.date) }}: {% if day.closed %}Closed{% else %}Open from {{
+  day.opens }} to {{ day.closes }}{% endif %}{% if day.reason %} — {{
+  day.reason }}{% endif %}
 
   {%- endfor %}
 card_mod:
   style:
     ha-markdown $: >
-      /* Kop centreren (style-attribuut werkt niet, sanitizer stript het) */
+      /* Center the heading (style attribute doesn't work, sanitizer strips it) */
 
       ha-markdown-element h2 {
         text-align: center;
       }
 
-      /* Bullets en de standaard lijst-inspring weg: het icoon neemt die plek in
-      */
+      /* Remove bullets and the default list indent: the icon takes that space */
 
       ha-markdown-element ul {
         list-style: none;
-        padding-inline-start: 0 !important;   /* browser zet hier standaard 40px */
+        padding-inline-start: 0 !important;   /* browsers default this to 40px */
         margin-inline-start: 0 !important;
         margin: 0;
       }
 
-      /* Alle tekstregels dezelfde smalle inspring: precies genoeg voor het
-      icoon */
+      /* Same narrow indent for every line: just enough room for the icon */
 
       ha-markdown-element p,
 
       ha-markdown-element li {
-        padding-left: 26px;   /* 20px icoon + 6px lucht */
+        padding-left: 26px;   /* 20px icon + 6px spacing */
       }
 
-      /* Icoon absoluut in die ruimte, dus buiten de tekstflow: geen inspringing
-      */
+      /* Position the icon absolutely in that space, outside the text flow */
 
       ha-markdown-element li {
         position: relative;
@@ -612,19 +609,19 @@ card_mod:
       ha-markdown-element li ha-icon {
         position: absolute;
         left: 0;
-        top: 1px;              /* fijnafstelling verticaal */
+        top: 1px;              /* fine-tune vertical alignment */
       }
 
-      /* Waarschuwingsicoon: donkeroranje + knipperen */
+      /* Warning icon: dark orange + blinking */
 
       ha-markdown-element ha-icon {
         color: darkorange;
         --mdc-icon-size: 20px;
-        vertical-align: text-bottom;   /* icoon netjes op de tekstregel */
-        animation: knipper-alert 1.5s ease-in-out infinite;
+        vertical-align: text-bottom;   /* keep the icon on the text line */
+        animation: blink-alert 1.5s ease-in-out infinite;
       }
 
-      @keyframes knipper-alert {
+      @keyframes blink-alert {
         50% { opacity: 0.25; }
       }
 ```
