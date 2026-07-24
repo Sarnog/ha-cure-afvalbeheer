@@ -132,94 +132,53 @@ meer los aan te passen.
 type: markdown
 content: >-
   {#- Bronsensor en attributen ophalen -#}
-
   {%- set sensor = 'sensor.cure_afvalbeheer_eindhoven_milieustraat_acht' -%}
-
   {%- set vandaag = state_attr(sensor, 'today') -%}
-
   {%- set upcoming = state_attr(sensor, 'upcoming') or [] -%}
-
-  {#- Adres voor de routelink; leeg = link wordt niet getoond -#}
-
   {%- set adres = state_attr(sensor, 'address') -%}
-
   {#- Naam en hulpsensoren worden afgeleid van de bronsensor hierboven -#}
-
   {%- set volledig = state_attr(sensor, 'friendly_name') or '' -%}
-
   {#- Alles vóór het woord 'Milieustraat' weglaten (integratie- en apparaatnaam)
   -#}
-
   {%- set pos = (volledig | lower).find('milieustraat') -%}
-
   {%- set naam = volledig[pos:] if pos >= 0 else (volledig or 'Milieustraat')
   -%}
-
   {%- set s_open = states(sensor ~ '_volgende_open') -%}
-
   {%- set s_dicht = states(sensor ~ '_volgende_gesloten') -%}
-
   {#- Is de milieustraat op dit moment daadwerkelijk open? -#}
-
   {%- set nu_open = vandaag is not none and not vandaag.closed
         and vandaag.opens is not none and vandaag.closes is not none
         and now() >= today_at(vandaag.opens) and now() <= today_at(vandaag.closes) -%}
   {#- Sluitingstijd voorbij? Dan geldt vandaag als gesloten -#}
-
   {%- set na_sluiting = vandaag is not none and not vandaag.closed and
   vandaag.closes is not none and now() > today_at(vandaag.closes) -%}
-
   {#- Alleen de sensor die nu telt hoeft een geldig tijdstip te hebben; zo niet:
   regel weglaten -#}
-
   {%- set d_open = as_datetime(s_open, none) -%}
-
   {%- set d_dicht = as_datetime(s_dicht, none) -%}
-
   {%- set toon_teller = (d_dicht if nu_open else d_open) is not none -%}
-
   {#- Datum van yyyy-mm-dd naar dd-mm-yyyy -#}
-
   {%- macro datum_nl(d) -%}
-
   {%- set s = d | string -%}{{ s[8:10] }}-{{ s[5:7] }}-{{ s[0:4] }}
-
   {%- endmacro -%}
-
   {#- Aftellen naar een timestamp-sensor: de frontend doet dit alleen in
   entity-rijen, hier zelf rekenen -#}
-
   {%- macro aftellen(t) -%}
-
   {%- set d = as_datetime(t, none) -%}
-
   {%- if d is none -%}onbekend
-
   {%- else -%}
-
   {%- set sec = ((d - now()).total_seconds() | int, 0) | max -%}
-
   {%- set dg = (sec // 86400) | int -%}
-
   {%- set uu = ((sec % 86400) // 3600) | int -%}
-
   {%- set mm = ((sec % 3600) // 60) | int -%}
-
   {%- if dg > 0 -%}{{ dg }} {{ 'dag' if dg == 1 else 'dagen' }}{% if uu > 0 %}
   en {{ uu }} uur{% endif %}
-
   {%- elif uu > 0 -%}{{ uu }} uur{% if mm > 0 %} en {{ mm }} min{% endif %}
-
   {%- elif mm > 0 -%}{{ mm }} min
-
   {%- else -%}minder dan een minuut
-
   {%- endif -%}
-
   {%- endif -%}
-
   {%- endmacro -%}
-
   <h2>{{ naam }}</h2>
 
 
@@ -227,11 +186,11 @@ content: >-
   na_sluiting %}Gesloten{% else %}Geopend van {{ vandaag.opens }} tot {{
   vandaag.closes }}{% endif %}
 
-  {% if toon_teller %} {% if nu_open %}**Sluit over:** {{ aftellen(s_dicht) }}{%
+  {% if toon_teller %}
+  {% if nu_open %}**Sluit over:** {{ aftellen(s_dicht) }}{%
   else %}**Weer open over:** {{ aftellen(s_open) }}{% endif %}
 
   {% endif %}
-
   {% if adres %}
 
   [🧭 Route naar {{ naam
@@ -239,9 +198,7 @@ content: >-
   }})
 
   {% endif %}
-
   **Openingstijden de komende dagen:**
-
   {% for dag in upcoming %}
 
   - {% if dag.reason %}<ha-icon icon="mdi:alert-outline"></ha-icon>{% endif %}{{
@@ -250,13 +207,6 @@ content: >-
   dag.reason }}{% endif %}
 
   {%- endfor %}
-visibility:
-  - condition: user
-    users:
-      - 37fd8ef6255e4c60ac6845be045d1187
-  - condition: state
-    entity: input_boolean.geavanceerde_weergave
-    state: "on"
 card_mod:
   style:
     ha-markdown $: >
@@ -310,7 +260,6 @@ card_mod:
       @keyframes knipper-alert {
         50% { opacity: 0.25; }
       }
-
 ```
 
 De koptekst wordt automatisch afgeleid uit de `friendly_name` van de
