@@ -8,10 +8,8 @@ Een custom Home Assistant integratie voor Cure Afvalbeheer.
 
 [![Open je Home Assistant-installatie en open deze repository binnen de Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&repository=ha-cure-afvalbeheer&category=integration)
 
-Zolang deze repository nog niet is opgenomen in de HACS-standaardlijst
-(zie de openstaande PR in ROADMAP.md), voegt deze knop de repository toe
-als custom repository in HACS — je hoeft de URL dus niet zelf over te
-typen.
+Deze knop voegt de repository toe als custom repository in HACS — je
+hoeft de URL dus niet zelf over te typen.
 
 ## Doel
 
@@ -30,65 +28,41 @@ er is geen los RSS-abonnement nodig.
 
 ## Features
 
-### v0.1.0
-
-- Config Flow: kies een Cure-gemeente; voeg dezelfde of een andere gemeente
-  desgewenst nogmaals toe voor meerdere devices.
-- Options Flow: aantal vooruitkijkdagen instelbaar (standaard 5), ook na
-  installatie te wijzigen.
-- DataUpdateCoordinator haalt live de milieustraat-pagina van de gekozen
-  gemeente op.
-- Eén sensor per milieustraat: actuele status (Open/Gesloten) en `today`/
-  `upcoming`-attributen voor gebruik in een markdown-kaart.
-- Home Assistant brand-assets voorbereid (zie `brands/`).
-
-### v0.2.0
-
-- Tijdelijke afwijkingen (hitteprotocol, verbouwing, sluiting) worden uit de
-  pagina zelf geparst en passen de sensor-status/attributen automatisch aan.
-
-### v0.3.0
-
-- Twee losse "reden"-sensoren per milieustraat (vandaag/morgen) in plaats van
-  een verstopt attribuut, zodat je automatiseringen al één dag vooruit kunt
-  laten waarschuwen voor een afwijking.
-- Nieuwe milieustraten die Cure aan een gemeentepagina toevoegt verschijnen
-  automatisch, zonder herstart. Verdwijnt een milieustraat permanent, dan
-  worden de bijbehorende sensoren `unavailable`; blijft die na een herstart
-  nog steeds weg, dan biedt Home Assistant zelf een verwijderoptie aan.
-
-### v0.3.1
-
-- Het merklogo wordt lokaal geserveerd via de eigen `brand/`-map van de
-  integratie (Home Assistant 2026.3+), zonder externe pull request.
-
-### v0.4.0
-
-- Diagnostics: een downloadbare dump van de config entry en de actuele
+- **Config Flow** — kies een Cure-gemeente (Eindhoven, Valkenswaard of
+  Geldrop-Mierlo); voeg dezelfde of een andere gemeente nogmaals toe voor
+  meerdere devices.
+- **Instelbaar via Opties / Herconfigureren** — het aantal vooruitkijkdagen
+  (standaard 5, max. 30) en het update-interval (5-1440 minuten, standaard 60)
+  zijn na installatie te wijzigen; via de reconfigure-flow wissel je ook de
+  gemeente van een bestaande integratie (met een bevestigingsstap, omdat de
+  sensoren en hun geschiedenis dan vervangen worden).
+- **Live vanaf de officiële Cure-website** — een DataUpdateCoordinator haalt
+  per gemeente de milieustraat-pagina op en parst adressen en openingstijden;
+  geen los RSS-abonnement nodig.
+- **Automatische locatie-detectie** — milieustraten die Cure aan een
+  gemeentepagina toevoegt verschijnen automatisch, zonder herstart. Verdwijnt
+  een milieustraat permanent, dan worden de sensoren `unavailable` en biedt
+  Home Assistant zelf een verwijderoptie aan.
+- **Vijf sensoren per milieustraat** — de status (open/gesloten) met `address`,
+  `today` en `upcoming` als attributen, twee "reden"-sensoren (vandaag/morgen)
+  en twee timestamp-sensoren ("volgende open" / "volgende gesloten"), zodat je
+  al een dag vooraf kunt waarschuwen en de eerstvolgende statuswijziging direct
+  bruikbaar is.
+- **Tijdelijke afwijkingen** — hitteprotocol, tijdelijke sluitingen en
+  verbouwingen worden uit dezelfde pagina geparst en passen de status en
+  openingstijden automatisch aan, met een reden erbij.
+- **Robuust bij site-wijzigingen** — bij een plotseling lege parse-uitkomst
+  houdt de integratie de laatst bekende goede gegevens aan en toont een
+  zichtbare reparatie-melding (**Instellingen → Systeem → Reparaties**), zodat
+  je weet dat de data mogelijk verouderd is.
+- **Diagnostics** — een downloadbare dump van de config entry en de actuele
   coordinator-data, handig bij bugrapporten.
-- Update-interval instelbaar via de Options Flow (5-1440 minuten, standaard
-  60), naast het aantal vooruitkijkdagen.
+- **Lokaal merklogo** — geserveerd via de eigen `brand/`-map (Home Assistant
+  2026.3+), zonder externe pull request.
 
-### v0.5.0
-
-- Adres van de milieustraat is nu ook als `address`-attribuut op de
-  statussensor beschikbaar (was al geparst, maar nergens getoond).
-- Reconfigure flow: wijzig de gemeente van een bestaande integratie via
-  **Instellingen → Apparaten & Diensten → Cure Afvalbeheer → Configureren**,
-  zonder de integratie te verwijderen en opnieuw toe te voegen. Kies je een
-  andere gemeente, dan vraagt de flow eerst expliciet om bevestiging — alle
-  sensoren en hun geschiedenis voor de huidige gemeente worden namelijk
-  vervangen door sensoren voor de nieuwe.
-- Twee nieuwe sensoren per milieustraat, **"volgende open"** en **"volgende
-  gesloten"** (timestamp), zodat de eerstvolgende statuswijziging direct
-  bruikbaar is in automatiseringen en op het dashboard, in plaats van
-  verstopt in een attribuut.
-- Zichtbare "reparatie"-melding in Home Assistant (**Instellingen →
-  Systeem → Reparaties**) als de parser plotseling geen enkele milieustraat
-  meer vindt, bijvoorbeeld door een wijziging in de opmaak van de
-  Cure-website.
-
-Zie ROADMAP.md voor wat er nog gepland staat.
+Zie [ROADMAP.md](ROADMAP.md) voor toekomstige ideeën en de
+[release notes](https://github.com/Sarnog/ha-cure-afvalbeheer/releases) voor de
+wijzigingsgeschiedenis per versie.
 
 ## Installatie
 
@@ -324,10 +298,7 @@ ondersteunen).
 
 ## Architectuur
 
-Zie:
-
-- ARCHITECTURE.md
-- AGENTS.md
+Zie [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Ontwikkeling
 
@@ -350,9 +321,8 @@ A custom Home Assistant integration for Cure Afvalbeheer.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&repository=ha-cure-afvalbeheer&category=integration)
 
-Until this repository is included in the HACS default store (see the
-pending PR in ROADMAP.md), this button adds it as a custom repository in
-HACS - no need to type the URL in yourself.
+This button adds the repository as a custom repository in HACS - no need
+to type the URL in yourself.
 
 ## Purpose
 
@@ -372,63 +342,40 @@ separate RSS subscription is needed.
 
 ## Features
 
-### v0.1.0
-
-- Config Flow: pick a Cure municipality; add the same or a different
-  municipality again if you want multiple devices.
-- Options Flow: number of forecast days configurable (default 5), also
-  changeable after installation.
-- DataUpdateCoordinator fetches the chosen municipality's recycling centre
-  page live.
-- One sensor per recycling centre: current status (Open/Closed) and `today`/
-  `upcoming` attributes for use in a markdown card.
-- Home Assistant brand assets prepared (see `brands/`).
-
-### v0.2.0
-
-- Temporary deviations (heat protocol, renovation, closure) are parsed
-  straight from the page and automatically adjust the sensor status/
-  attributes.
-
-### v0.3.0
-
-- Two dedicated "reason" sensors per recycling centre (today/tomorrow)
-  instead of a hidden attribute, so your automations can warn a day ahead
-  of a deviation.
-- New recycling centres that Cure adds to a municipality page appear
-  automatically, without a restart. If a recycling centre permanently
-  disappears, its sensors become `unavailable`; if it is still gone after a
-  restart, Home Assistant itself offers a removal option.
-
-### v0.3.1
-
-- The brand logo is now served locally via the integration's own `brand/`
-  folder (Home Assistant 2026.3+), with no external pull request needed.
-
-### v0.4.0
-
-- Diagnostics: a downloadable dump of the config entry and the current
+- **Config Flow** — pick a Cure municipality (Eindhoven, Valkenswaard or
+  Geldrop-Mierlo); add the same or a different municipality again for multiple
+  devices.
+- **Configurable via Options / Reconfigure** — the number of forecast days
+  (default 5, max 30) and the update interval (5-1440 minutes, default 60) can
+  be changed after installation; the reconfigure flow also lets you switch an
+  existing integration's municipality (with a confirmation step, since the
+  sensors and their history are then replaced).
+- **Live from the official Cure website** — a DataUpdateCoordinator fetches
+  each municipality's recycling-centre page and parses addresses and opening
+  hours; no separate RSS subscription needed.
+- **Automatic location discovery** — recycling centres that Cure adds to a
+  municipality page appear automatically, without a restart. If one permanently
+  disappears, its sensors become `unavailable` and Home Assistant offers a
+  removal option.
+- **Five sensors per recycling centre** — the status (open/closed) with
+  `address`, `today` and `upcoming` attributes, two "reason" sensors
+  (today/tomorrow) and two timestamp sensors ("next open" / "next close"), so
+  you can warn a day ahead and the next status change is directly usable.
+- **Temporary deviations** — heat protocol, temporary closures and renovations
+  are parsed from the same page and automatically adjust the status and opening
+  hours, with a reason attached.
+- **Robust against site changes** — on a suddenly empty parse result the
+  integration keeps the last known good data and shows a visible repair
+  notification (**Settings → System → Repairs**), so you know the data may be
+  stale.
+- **Diagnostics** — a downloadable dump of the config entry and the current
   coordinator data, handy for bug reports.
-- Update interval configurable via the Options Flow (5-1440 minutes,
-  default 60), alongside the forecast-days setting.
+- **Local brand logo** — served via the integration's own `brand/` folder
+  (Home Assistant 2026.3+), with no external pull request.
 
-### v0.5.0
-
-- The recycling centre's address is now also available as an `address`
-  attribute on the status sensor (it was already parsed, but never shown).
-- Reconfigure flow: change the municipality of an existing integration via
-  **Settings → Devices & Services → Cure Afvalbeheer → Configure**, without
-  removing and re-adding it. Picking a different municipality first asks
-  for explicit confirmation — all sensors and their history for the
-  current municipality are replaced by sensors for the new one.
-- Two new sensors per recycling centre, **"next open"** and **"next
-  close"** (timestamp), so the next status change is directly usable in
-  automations and on the dashboard instead of buried in an attribute.
-- A visible repair notification in Home Assistant (**Settings → System →
-  Repairs**) if the parser suddenly finds no recycling centre at all
-  anymore, for example due to a change in the Cure website's markup.
-
-See ROADMAP.md for what is still planned.
+See [ROADMAP.md](ROADMAP.md) for future ideas and the
+[release notes](https://github.com/Sarnog/ha-cure-afvalbeheer/releases) for the
+per-version change history.
 
 ## Installation
 
@@ -664,10 +611,7 @@ support).
 
 ## Architecture
 
-See:
-
-- ARCHITECTURE.md
-- AGENTS.md
+See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Development
 
