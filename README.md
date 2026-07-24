@@ -6,10 +6,22 @@
 
 Een custom Home Assistant integratie voor Cure Afvalbeheer.
 
-[![Open je Home Assistant-installatie en open deze repository binnen de Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&repository=ha-cure-afvalbeheer&category=integration)
+<!-- Tabel zodat de labels en de knoppen in twee nette, uitgelijnde kolommen
+     staan die zich op elk scherm aanpassen. -->
+<table>
+  <tr>
+    <td>Integratie toevoegen:</td>
+    <td><a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&amp;repository=ha-cure-afvalbeheer&amp;category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open je Home Assistant-installatie en open deze repository binnen de Home Assistant Community Store."></a></td>
+  </tr>
+  <tr>
+    <td>Blueprint:</td>
+    <td><a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FSarnog%2Fha-cure-afvalbeheer%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fcure_afvalbeheer%2Fdeviation_warning.yaml"><img src="https://my.home-assistant.io/badges/blueprint_import.svg" alt="Open je Home Assistant-installatie en toon het importvenster voor de blueprint."></a></td>
+  </tr>
+</table>
 
-Deze knop voegt de repository toe als custom repository in HACS — je
-hoeft de URL dus niet zelf over te typen.
+De eerste knop voegt de repository als custom repository toe aan HACS, de
+tweede importeert de kant-en-klare blueprint — je hoeft geen URL's zelf over
+te typen.
 
 ## Doel
 
@@ -246,30 +258,29 @@ Twee dingen om in gedachten te houden naarmate je richting het maximum gaat:
   filter `upcoming` dan op `dag.reason` (zoals in een eerdere versie van dit
   voorbeeld) zodra de lijst lang wordt — dat is een keuze, geen noodzaak.
 
-### Voorbeeld: automatisering (waarschuw al één dag vooraf)
+### Waarschuwing bij een afwijking morgen
 
-Dit is precies waarom er een aparte "reden morgen"-sensor bestaat: de
-melding komt binnen zodra Cure de wijziging aankondigt, niet pas op de dag
-zelf.
+Hiervoor bestaat de aparte "reden morgen"-sensor: de melding komt binnen
+zodra Cure de wijziging aankondigt, niet pas op de dag zelf. Er zijn twee
+manieren, van simpel naar flexibel:
 
-```yaml
-automation:
-  - alias: "Cure: waarschuwing voor afwijking morgen"
-    trigger:
-      - trigger: state
-        entity_id: sensor.cure_afvalbeheer_eindhoven_milieustraat_acht_reden_morgen
-    condition:
-      - condition: template
-        value_template: >
-          {{ trigger.from_state.state == '' and trigger.to_state.state != '' }}
-    action:
-      - action: notify.notify
-        data:
-          title: "Milieustraat Acht"
-          message: >
-            Morgen wijkt de milieustraat af van de normale openingstijden:
-            {{ trigger.to_state.state }}.
-```
+1. **Kant-en-klare blueprint.** Klik de **Blueprint**-badge bovenaan dit
+   bestand om
+   [`deviation_warning.yaml`](blueprints/automation/cure_afvalbeheer/deviation_warning.yaml)
+   te importeren, en kies daarna in een keuzemenu de milieustraat (de
+   bijbehorende "... reden morgen"-sensor) en je telefoon (een toestel dat
+   de HA Companion App draait). Titel en tekst worden automatisch ingevuld,
+   geen sjablonen typen nodig; optioneel bewaak je meerdere milieustraten
+   tegelijk en kies je op Android een eigen meldingskanaal. Home Assistant
+   vraagt bij het opslaan zelf om een naam voor de automation.
+2. **Zelf een automation bouwen**, voor volledige controle. Laat een
+   **status**-trigger reageren op de `..._reden_morgen`-sensor van je
+   milieustraat en filter met een template-conditie op de overgang van
+   "geen afwijking" (`''`) naar een reden — bijvoorbeeld
+   `{{ trigger.from_state.state == '' and trigger.to_state.state != '' }}` —
+   en stuur in de actie een melding met `{{ trigger.to_state.state }}` als
+   reden. De sensorwaarde is leeg (`""`) zolang er geen afwijking is, en
+   anders `hitteprotocol`, `verbouwing` of `werkzaamheden`.
 
 ### Voorbeeld: navigatie-knop
 
@@ -319,10 +330,22 @@ MIT
 
 A custom Home Assistant integration for Cure Afvalbeheer.
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&repository=ha-cure-afvalbeheer&category=integration)
+<!-- Table so the labels and the buttons sit in two neat, aligned columns
+     that adapt to any screen size. -->
+<table>
+  <tr>
+    <td>Add integration:</td>
+    <td><a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Sarnog&amp;repository=ha-cure-afvalbeheer&amp;category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store."></a></td>
+  </tr>
+  <tr>
+    <td>Blueprint:</td>
+    <td><a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FSarnog%2Fha-cure-afvalbeheer%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fcure_afvalbeheer%2Fdeviation_warning.yaml"><img src="https://my.home-assistant.io/badges/blueprint_import.svg" alt="Open your Home Assistant instance and show the blueprint import dialog."></a></td>
+  </tr>
+</table>
 
-This button adds the repository as a custom repository in HACS - no need
-to type the URL in yourself.
+The first button adds the repository as a custom repository in HACS, the
+second imports the ready-made blueprint - no need to type any URLs in
+yourself.
 
 ## Purpose
 
@@ -561,30 +584,29 @@ Two things to keep in mind as you get closer to the maximum:
   `upcoming` on `day.reason` (as in an earlier version of this example)
   once the list gets long — that is a choice, not a requirement.
 
-### Example: automation (warn a day ahead)
+### Warning about a deviation tomorrow
 
 This is exactly why a dedicated "reason tomorrow" sensor exists: the
 notification comes in as soon as Cure announces the change, not only once
-the day itself arrives.
+the day itself arrives. There are two ways, from simple to flexible:
 
-```yaml
-automation:
-  - alias: "Cure: warn about a deviation tomorrow"
-    trigger:
-      - trigger: state
-        entity_id: sensor.cure_afvalbeheer_eindhoven_milieustraat_acht_reden_morgen
-    condition:
-      - condition: template
-        value_template: >
-          {{ trigger.from_state.state == '' and trigger.to_state.state != '' }}
-    action:
-      - action: notify.notify
-        data:
-          title: "Milieustraat Acht"
-          message: >
-            Tomorrow the recycling centre deviates from its normal opening
-            hours: {{ trigger.to_state.state }}.
-```
+1. **Ready-made blueprint.** Click the **Blueprint** badge at the top of
+   this file to import
+   [`deviation_warning.yaml`](blueprints/automation/cure_afvalbeheer/deviation_warning.yaml),
+   then pick the recycling centre (its matching "... reden morgen" sensor)
+   and your phone (a device running the HA Companion App) from a menu. The
+   title and text are filled in automatically, no templates to write
+   yourself; you can optionally watch several recycling centres at once and,
+   on Android, choose a dedicated notification channel. Home Assistant
+   prompts you for a name when saving.
+2. **Build your own automation**, for full control. Use a **state** trigger
+   on your recycling centre's `..._reden_morgen` sensor and filter with a
+   template condition for the transition from "no deviation" (`''`) to a
+   reason — for example
+   `{{ trigger.from_state.state == '' and trigger.to_state.state != '' }}` —
+   then send a notification with `{{ trigger.to_state.state }}` as the
+   reason. The sensor value is empty (`""`) while there is no deviation, and
+   otherwise `hitteprotocol`, `verbouwing` or `werkzaamheden`.
 
 ### Example: navigation button
 
