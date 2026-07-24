@@ -63,7 +63,7 @@ inhoudelijke check: als een specifieke tag/attribuut verdwijnt door een
 opmaakwijziging, blijft het onderscheidende kenmerk (de kop-tekst) leidend
 in plaats van meteen `None` terug te geven. Zie `location_addresses()`'s
 h3-naar-h1-fallback in `parser.py`, en `section_with_heading`/
-`closure_notice_section` in `selectors.py` (v0.6.0).
+`closure_notice_section` in `selectors.py`.
 
 ---
 
@@ -104,15 +104,15 @@ HTTP-request), dan blijven de laatst bekende goede locaties staan in
 plaats van overschreven te worden met niets - de repair-issue (zie
 Repairs) blijft wel actief als signaal dat de locatiedata mogelijk
 verouderd is. Is er nog geen eerdere goede data, dan wordt de lege data
-gewoon doorgezet (v0.6.0). De meldingen (`notices`) uit diezelfde fetch
-worden wél altijd gebruikt, ook als de locaties bevroren blijven -
+gewoon doorgezet. De meldingen (`notices`) uit diezelfde fetch worden wél
+altijd gebruikt, ook als de locaties bevroren blijven -
 `location_addresses()` en `notices()` gebruiken losstaande selectors, dus
-een opmaakwijziging kan de één breken zonder de ander te raken (v0.6.1).
-Omdat `notices()` de `location_hint` van een melding bepaalt aan de hand
-van de op dát moment geparste (in dit geval lege) locatie-lijst, wordt die
-hint zo nodig herberekend tegen de aangehouden locaties, anders zou een
-melding die maar één milieustraat betreft per ongeluk voor alle locaties
-gaan gelden (v0.6.2).
+een opmaakwijziging kan de één breken zonder de ander te raken. Omdat
+`notices()` de `location_hint` van een melding bepaalt aan de hand van de
+op dát moment geparste (in dit geval lege) locatie-lijst, wordt die hint
+zo nodig herberekend tegen de aangehouden locaties, anders zou een melding
+die maar één milieustraat betreft per ongeluk voor alle locaties gaan
+gelden.
 
 ---
 
@@ -205,23 +205,14 @@ Zoek in deze volgorde:
 
 ---
 
-# Toekomstige uitbreidingen
+# Uitbreidbaarheid
 
-Klaar, zonder de parser-architectuur te wijzigen:
-
-- meerdere gemeentes (v0.1.0)
-- tijdelijke sluitingen, hitteprotocol (v0.2.0) - geparst van de
-  milieustraat-pagina zelf; een los RSS-feed bleek niet nodig
-- diagnostics, configureerbaar update-interval (v0.4.0)
-- adres-attribuut, reconfigure flow, repair-issue bij een kapotte parser,
-  `next_open`/`next_close`-sensoren (v0.5.0)
-- robuustheid tegen opmaakwijzigingen (laatst bekende goede data aanhouden,
-  fallback-selectors), navigatieknop-voorbeeld (v0.6.0)
-
-Nog te ondersteunen:
-
-- aanvullende sensoren (zie ROADMAP.md's "Toekomstideeën" voor concrete
-  ideeën)
+Deze lagenstructuur is opgezet om nieuwe functionaliteit op te nemen zonder de
+pijplijn zelf te wijzigen: een nieuwe gegevensbron of afwijkingssoort haakt aan
+op de Selectors-/Parser-laag, afgeleide waarden komen in `schedule.py` en de
+entiteiten. Meer gemeentes, extra sensoren en nieuwe afwijkingstypen passen zo
+binnen dezelfde architectuur. Concrete ideeën voor uitbreidingen staan in
+[ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -286,7 +277,7 @@ content check: if a specific tag/attribute disappears due to a layout
 change, the distinguishing signal (the heading text) stays authoritative
 instead of immediately returning `None`. See `location_addresses()`'s
 h3-to-h1 fallback in `parser.py`, and `section_with_heading`/
-`closure_notice_section` in `selectors.py` (v0.6.0).
+`closure_notice_section` in `selectors.py`.
 
 ---
 
@@ -326,15 +317,15 @@ If a fetch returns no locations at all (after an otherwise successful
 HTTP request), the last known good locations are kept instead of being
 overwritten with nothing - the repair issue (see Repairs) still stays
 active as a signal that the location data may be stale. If there is no
-earlier good data yet, the empty data is passed through as-is (v0.6.0).
-The notices from that same fetch are always used regardless, even while
+earlier good data yet, the empty data is passed through as-is. The
+notices from that same fetch are always used regardless, even while
 locations stay frozen - `location_addresses()` and `notices()` use
 unrelated selectors, so a layout change can break one without affecting
-the other (v0.6.1). Since `notices()` resolves a notice's
-`location_hint` against that same cycle's (in this case empty) parsed
-location list, that hint is re-resolved against the retained locations
-where it is missing, otherwise a notice naming only one recycling centre
-would end up incorrectly applying to all of them (v0.6.2).
+the other. Since `notices()` resolves a notice's `location_hint` against
+that same cycle's (in this case empty) parsed location list, that hint is
+re-resolved against the retained locations where it is missing, otherwise
+a notice naming only one recycling centre would end up incorrectly
+applying to all of them.
 
 ---
 
@@ -425,19 +416,11 @@ Search in this order:
 
 ---
 
-# Future Extensions
+# Extensibility
 
-Done, without changing the parser architecture:
-
-- multiple municipalities (v0.1.0)
-- temporary closures, heat protocol (v0.2.0) - parsed from the recycling
-  centre page itself; no separate RSS feed turned out to be necessary
-- diagnostics, configurable update interval (v0.4.0)
-- address attribute, reconfigure flow, repair issue for a broken parser,
-  `next_open`/`next_close` sensors (v0.5.0)
-- robustness against layout changes (keep last known good data, fallback
-  selectors), navigation button example (v0.6.0)
-
-Still to support:
-
-- additional sensors (see ROADMAP.md's "Toekomstideeën" for concrete ideas)
+This layered structure is designed to accommodate new functionality without
+changing the pipeline itself: a new data source or deviation type plugs in at
+the Selectors/Parser layer, derived values go in `schedule.py` and the
+entities. More municipalities, extra sensors and new deviation types all fit
+within the same architecture. Concrete ideas for extensions live in
+[ROADMAP.md](ROADMAP.md).
