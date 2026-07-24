@@ -271,7 +271,11 @@ open"- en "volgende gesloten"-sensoren een geldige waarde binnen het
 vooruitkijkvenster hebben, toont de kaart daaronder ook een aftelling:
 "Sluit over: ..." als de milieustraat nu open is, of "Weer open over: ..."
 als die nu gesloten is (in dagen/uren/minuten, via de `aftellen`-macro);
-zonder geldige waarde blijft die regel gewoon weg. Datums worden via de
+zonder geldige waarde blijft die regel gewoon weg. Is het `address`-attribuut
+van de sensor bekend, dan verschijnt daaronder een klikbare
+**🧭 Route naar ...**-link: tikken opent op een mobiel de navigatie-app met
+de route naar de milieustraat (een `maps/dir`-link met het URL-gecodeerde
+adres). Zonder adres blijft die regel weg. Datums worden via de
 `datum_nl`-macro in `dd-mm-jjjj`-notatie getoond. Elke dag in de lijst
 krijgt nu een eigen, knipperend waarschuwingsicoon (`mdi:alert-outline`)
 zodra die specifieke dag een `reason` heeft, in plaats van één icoon bij
@@ -635,7 +639,11 @@ and "next close" sensors have a valid value within the forecast window,
 the card also shows a countdown below that: "Closes in: ..." if the
 recycling centre is currently open, or "Opens again in: ..." if it is
 currently closed (in days/hours/minutes, via the `countdown` macro);
-without a valid value, that line is simply omitted. Dates are shown in
+without a valid value, that line is simply omitted. If the sensor's
+`address` attribute is known, a clickable **🧭 Route to ...** link appears
+below that: tapping it opens the navigation app on a phone with the route to
+the recycling centre (a `maps/dir` link with the URL-encoded address).
+Without an address, that line is omitted. Dates are shown in
 `dd-mm-yyyy` notation via the `format_date` macro. Every day in the list
 now gets its own blinking warning icon (`mdi:alert-outline`) whenever that
 specific day has a `reason`, instead of a single icon next to a heading
