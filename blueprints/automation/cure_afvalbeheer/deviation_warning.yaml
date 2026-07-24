@@ -1,0 +1,101 @@
+blueprint:
+  name: Cure Afvalbeheer - waarschuwing bij afwijkende openingstijden
+  description: >
+    Stuurt een pushmelding naar de HA Companion App zodra een milieustraat
+    van de Cure-integratie voor morgen een afwijkende openingstijd krijgt
+    (hitteprotocol, tijdelijke sluiting of verbouwing). Zo weet je het al
+    een dag van tevoren - zodra Cure de wijziging aankondigt, niet pas op de
+    dag zelf.
+
+
+    De melding reageert op de "reden morgen"-sensor van een milieustraat
+    (entity-ID eindigt op `_reden_morgen`): die is leeg zolang er geen
+    afwijking is, en bevat anders de reden. De naam van de milieustraat in
+    de titel wordt automatisch uit de gekozen sensor afgeleid, geen
+    sjablonen typen nodig.
+
+
+    Gebruikt Home Assistant's ingebouwde "device notify"-actie
+    (`domain: mobile_app`), dezelfde die achter een keuzemenu met
+    toestelnamen zit - dat lost zelf de juiste notify-service voor het
+    gekozen toestel op.
+  domain: automation
+  source_url: https://github.com/Sarnog/ha-cure-afvalbeheer/blob/main/blueprints/automation/cure_afvalbeheer/deviation_warning.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    cure_sensor:
+      name: Milieustraat ("reden morgen"-sensor)
+      description: >
+        De "reden morgen"-sensor van de milieustraat die je wilt bewaken
+        (heet "... reden morgen"; de entity-ID eindigt op `_reden_morgen`).
+        Meerdere sensoren kiezen mag - dan bewaakt deze ene automation al je
+        milieustraten tegelijk.
+      selector:
+        entity:
+          multiple: true
+          integration: cure_afvalbeheer
+          domain: sensor
+    notify_device:
+      name: Telefoon
+      description: >
+        Het toestel dat de melding moet ontvangen. Moet de officiële Home
+        Assistant Companion App draaien.
+      selector:
+        device:
+          integration: mobile_app
+    notify_channel:
+      name: Meldingskanaal (optioneel, Android)
+      description: >
+        Naam van een meldingskanaal dat je al eerder in de Companion App
+        hebt gebruikt (bv. "Alarm") - zo kun je een eigen ringtone/prioriteit
+        instellen specifiek voor deze meldingen. Leeg laten voor het
+        standaardkanaal. Heeft op iOS geen effect.
+      default: ""
+      selector:
+        text: {}
+
+# queued: bewaak je meerdere milieustraten, dan kunnen er in dezelfde
+# coordinator-update vlak na elkaar meerdere wijzigen - zo gaat geen enkele
+# melding verloren en worden ze netjes na elkaar afgehandeld.
+mode: queued
+
+triggers:
+  - trigger: state
+    entity_id: !input cure_sensor
+
+# Alleen melden bij een echte overgang naar een (andere) afwijking: van geen
+# afwijking ('') of een andere reden naar een reden. Een verwijderde entity
+# (to_state is None), overgangen vanuit/naar 'unknown'/'unavailable' (o.a. bij
+# herstart) en het verdwijnen van een afwijking (naar '') leveren geen melding
+# op. De None-guards staan vooraan, zodat de latere `.state`-toegang veilig is
+# (Jinja's `and` short-circuit).
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.to_state is not none
+         and trigger.from_state is not none
+         and trigger.from_state.state not in ['unknown', 'unavailable']
+         and trigger.to_state.state not in ['', 'unknown', 'unavailable']
+         and trigger.to_state.state != trigger.from_state.state }}
+
+actions:
+  - variables:
+      notify_channel: !input notify_channel
+      # Naam van de milieustraat uit de friendly_name afleiden: de staart
+      # ' reden morgen' weghalen en, indien aanwezig, vanaf het woord
+      # 'Milieustraat' beginnen (zo valt de integratie-/apparaatnaam weg).
+      milieustraat_naam: >-
+        {%- set fn = trigger.to_state.attributes.friendly_name or 'Milieustraat' -%}
+        {%- set rpos = (fn | lower).rfind(' reden ') -%}
+        {%- set zonder_reden = fn[:rpos] if rpos >= 0 else fn -%}
+        {%- set mpos = (zonder_reden | lower).find('milieustraat') -%}
+        {{ zonder_reden[mpos:] if mpos >= 0 else zonder_reden }}
+  - device_id: !input notify_device
+    domain: mobile_app
+    type: notify
+    title: "{{ milieustraat_naam }}"
+    message: >-
+      Morgen wijkt {{ milieustraat_naam }} af van de normale openingstijden:
+      {{ trigger.to_state.state }}.
+    data: "{{ dict(channel=notify_channel) if notify_channel else {} }}"
