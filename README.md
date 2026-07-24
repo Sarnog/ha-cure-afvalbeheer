@@ -368,6 +368,17 @@ Gebruik:
 
 MIT
 
+## Steun dit project ☕
+
+Vind je deze integratie nuttig? Een kleine bijdrage houdt de koffie warm
+en de commits komend. Volledig vrijblijvend natuurlijk!
+
+<!-- Ko-fi badge via shields.io, geen externe tracking -->
+[![Koop me een koffie op Ko-fi](https://img.shields.io/badge/Ko--fi-Koop%20me%20een%20koffie-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white)](https://ko-fi.com/sarnog)
+
+<!-- GitHub Sponsors badge, toont live het aantal sponsors -->
+[![Sponsor via GitHub](https://img.shields.io/github/sponsors/sarnog?style=for-the-badge&logo=github&label=Sponsors&color=EA4AAA)](https://github.com/sponsors/sarnog)
+
 ---
 
 # Cure Afvalbeheer for Home Assistant
@@ -732,3 +743,14 @@ Uses:
 ## License
 
 MIT
+
+## Support this project ☕
+
+Do you find this integration useful? A small contribution keeps the coffee
+warm and the commits coming. Entirely optional, of course!
+
+<!-- Ko-fi badge via shields.io, no external tracking -->
+[![Buy me a coffee on Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?style=for-the-badge&logo=kofi&logoColor=white)](https://ko-fi.com/sarnog)
+
+<!-- GitHub Sponsors badge, shows the sponsor count live -->
+[![Sponsor via GitHub](https://img.shields.io/github/sponsors/sarnog?style=for-the-badge&logo=github&label=Sponsors&color=EA4AAA)](https://github.com/sponsors/sarnog)
