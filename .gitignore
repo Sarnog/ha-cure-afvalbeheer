@@ -17,3 +17,6 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Interne samenwerkingsafspraken voor de agent - lokaal houden, niet publiek
+AGENTS.md
