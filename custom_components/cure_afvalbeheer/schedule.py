@@ -67,6 +67,27 @@ def _notice_applies(notice: Notice, location: Location, day: date) -> bool:
     return notice.ends is None or day <= notice.ends
 
 
+def _deciding_reason(
+    notices: list[Notice], opens: str | None, closes: str | None
+) -> str | None:
+    """Return the reason of the notice that decided the resolved hours.
+
+    The closing time is what a visitor runs into first, so the notice
+    behind it is named where several apply; only when none of them
+    announced a closing time does the opening side get to name it.
+    """
+
+    for notice in notices:
+        if closes is not None and notice.closes == closes:
+            return notice.reason
+
+    for notice in notices:
+        if opens is not None and notice.opens == opens:
+            return notice.reason
+
+    return notices[0].reason if notices else None
+
+
 def resolve_day(
     location: Location,
     day: date,
@@ -77,13 +98,14 @@ def resolve_day(
     A full closure notice takes precedence over an hours-adjusting one
     (e.g. a heat protocol) when both happen to apply on the same day.
 
-    An hours-adjusting notice only ever narrows a day the regular schedule
-    already opens: it never opens a day that is closed anyway - a Sunday
-    say, or Christmas Day - and it keeps the regular time for whichever of
-    the two it does not announce itself, since Cure usually mentions only
-    the earlier closing time. Where several adjust the same day, the one
-    closing earliest wins, so the outcome does not depend on the order in
-    which the page happened to mention them.
+    An hours-adjusting notice only ever applies to a day the regular
+    schedule already opens: it never opens a day that is closed anyway - a
+    Sunday say, or Christmas Day. Each side is handled on its own, so a
+    notice announcing just one of the two leaves the regular time standing
+    for the other; Cure usually mentions only an earlier closing time.
+    Where several adjust the same day, the strictest of each side wins -
+    the latest opening time and the earliest closing time - so the outcome
+    never depends on the order in which the page happened to mention them.
     """
 
     applicable = [
@@ -106,23 +128,27 @@ def resolve_day(
     if base is None or base.closed:
         return ResolvedDay(date=day, opens=None, closes=None, closed=True, reason=None)
 
-    if applicable:
-        notice = min(applicable, key=lambda item: item.closes or "99:99")
-
+    if not applicable:
         return ResolvedDay(
             date=day,
-            opens=notice.opens if notice.opens is not None else base.opens,
-            closes=notice.closes if notice.closes is not None else base.closes,
+            opens=base.opens,
+            closes=base.closes,
             closed=False,
-            reason=notice.reason,
+            reason=None,
         )
+
+    announced_opens = [n.opens for n in applicable if n.opens is not None]
+    announced_closes = [n.closes for n in applicable if n.closes is not None]
+
+    opens = max(announced_opens) if announced_opens else base.opens
+    closes = min(announced_closes) if announced_closes else base.closes
 
     return ResolvedDay(
         date=day,
-        opens=base.opens,
-        closes=base.closes,
+        opens=opens,
+        closes=closes,
         closed=False,
-        reason=None,
+        reason=_deciding_reason(applicable, opens, closes),
     )
 
 

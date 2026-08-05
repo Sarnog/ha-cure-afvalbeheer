@@ -170,7 +170,7 @@ def test_resolve_day_keeps_the_regular_opening_time_when_only_closing_moves():
     monday = date(2026, 7, 20)
 
     adjusted = Notice(
-        reason="aangepaste sluitingstijd",
+        reason="aangepaste openingstijden",
         title="Afwijkende openingstijden",
         closed=False,
         closes="16:00",
@@ -182,7 +182,7 @@ def test_resolve_day_keeps_the_regular_opening_time_when_only_closing_moves():
     assert result.opens == "08:30"
     assert result.closes == "16:00"
     assert result.closed is False
-    assert result.reason == "aangepaste sluitingstijd"
+    assert result.reason == "aangepaste openingstijden"
 
 
 def test_resolve_day_does_not_open_a_closed_day_for_an_hours_adjustment():
@@ -207,6 +207,71 @@ def test_resolve_day_does_not_open_a_closed_day_for_an_hours_adjustment():
     assert result.reason is None
 
 
+def test_resolve_day_keeps_the_regular_closing_time_when_only_opening_moves():
+    monday = date(2026, 7, 20)
+
+    adjusted = Notice(
+        reason="aangepaste openingstijden",
+        title="Afwijkende openingstijden",
+        closed=False,
+        opens="10:00",
+        dates=[monday],
+    )
+
+    result = resolve_day(_LOCATION, monday, notices=[adjusted])
+
+    assert result.opens == "10:00"
+    assert result.closes == "17:00"
+    assert result.closed is False
+
+
+def test_resolve_day_applies_both_sides_of_an_adjustment():
+    """Later open and later closed is as valid a combination as any."""
+
+    monday = date(2026, 7, 20)
+
+    adjusted = Notice(
+        reason="aangepaste openingstijden",
+        title="Afwijkende openingstijden",
+        closed=False,
+        opens="10:00",
+        closes="19:00",
+        dates=[monday],
+    )
+
+    result = resolve_day(_LOCATION, monday, notices=[adjusted])
+
+    assert result.opens == "10:00"
+    assert result.closes == "19:00"
+
+
+def test_resolve_day_combines_the_strictest_side_of_each_adjustment():
+    """One notice moving each side must not drop the other one's."""
+
+    monday = date(2026, 7, 20)
+
+    opens_later = Notice(
+        reason="aangepaste openingstijden",
+        title="Later open",
+        closed=False,
+        opens="10:00",
+        dates=[monday],
+    )
+    closes_earlier = Notice(
+        reason="hitteprotocol",
+        title="Hitteprotocol",
+        closed=False,
+        closes="14:00",
+        ends=monday,
+    )
+
+    result = resolve_day(_LOCATION, monday, notices=[opens_later, closes_earlier])
+
+    assert result.opens == "10:00"
+    assert result.closes == "14:00"
+    assert result.reason == "hitteprotocol"  # the closing side names it
+
+
 def test_resolve_day_prefers_the_earliest_closing_adjustment():
     """Order on the page must not decide which adjustment is applied."""
 
@@ -221,7 +286,7 @@ def test_resolve_day_prefers_the_earliest_closing_adjustment():
         ends=monday,
     )
     adjusted = Notice(
-        reason="aangepaste sluitingstijd",
+        reason="aangepaste openingstijden",
         title="Afwijkende openingstijden",
         closed=False,
         closes="16:00",
