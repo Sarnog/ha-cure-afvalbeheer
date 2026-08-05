@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from bs4 import BeautifulSoup
@@ -25,12 +26,28 @@ from .parsers import (
 )
 
 
+def _mentions_location(heading_lower: str, location: Location) -> bool:
+    """Return whether a lower-cased heading names this location."""
+
+    name = location.name.removeprefix("Milieustraat ").strip().lower()
+
+    if not name:
+        return False
+
+    return re.search(rf"(?<!\w){re.escape(name)}(?!\w)", heading_lower) is not None
+
+
 def location_hint_for(heading: str, locations: list[Location]) -> str | None:
     """Return the single location name mentioned in heading, if any.
 
     Only the heading is checked, not the full notice body: a renovation
     notice for one location often mentions another as the alternative to
     visit instead, which would otherwise be picked up as a false match.
+
+    Matching is on whole words. Short location names are ordinary Dutch
+    words too - "Acht" sits inside "achter" and "gedacht" - so a plain
+    substring test would scope a municipality-wide notice to a single
+    location purely on the wording of its heading.
     """
 
     heading_lower = heading.lower()
@@ -38,7 +55,7 @@ def location_hint_for(heading: str, locations: list[Location]) -> str | None:
     matches = [
         location.name
         for location in locations
-        if location.name.removeprefix("Milieustraat ").strip().lower() in heading_lower
+        if _mentions_location(heading_lower, location)
     ]
 
     if len(matches) == 1:

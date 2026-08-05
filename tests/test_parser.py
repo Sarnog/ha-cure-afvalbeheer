@@ -1,7 +1,8 @@
 from datetime import date
 from pathlib import Path
 
-from custom_components.cure_afvalbeheer.parser import CureParser
+from custom_components.cure_afvalbeheer.models import Location
+from custom_components.cure_afvalbeheer.parser import CureParser, location_hint_for
 
 
 def test_page_title():
@@ -172,3 +173,31 @@ def test_notices_finds_the_closing_days():
     adjusted = next(n for n in notices if n.reason == "aangepaste sluitingstijd")
     assert adjusted.closes == "16:00"
     assert adjusted.dates == [date(2026, 12, 24), date(2026, 12, 31)]
+
+
+_TWO_LOCATIONS = [
+    Location(name="Milieustraat Acht", address=None, hours=[]),
+    Location(name="Milieustraat Lodewijkstraat", address=None, hours=[]),
+]
+
+
+def test_location_hint_for_matches_a_named_location():
+    result = location_hint_for("Let op! Lodewijkstraat wordt verbouwd", _TWO_LOCATIONS)
+
+    assert result == "Milieustraat Lodewijkstraat"
+
+
+def test_location_hint_for_ignores_a_location_name_inside_another_word():
+    """The name "Acht" also sits inside ordinary words like "achteringang"."""
+
+    result = location_hint_for("Let op! De achteringang is gesloten", _TWO_LOCATIONS)
+
+    assert result is None
+
+
+def test_location_hint_for_ignores_a_heading_naming_both_locations():
+    result = location_hint_for(
+        "Let op! Acht en Lodewijkstraat zijn gesloten", _TWO_LOCATIONS
+    )
+
+    assert result is None
