@@ -277,6 +277,64 @@ def test_parse_closing_days_expands_a_range():
     ]
 
 
+def test_parse_closing_days_expands_a_range_across_a_month_boundary():
+    """Only the two ends are written out; the days between are implied."""
+
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Gesloten van 30 december 2026 tot en met 2 januari 2027"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].dates == [
+        date(2026, 12, 30),
+        date(2026, 12, 31),
+        date(2027, 1, 1),
+        date(2027, 1, 2),
+    ]
+
+
+def test_parse_closing_days_reads_a_range_crossing_new_year_without_a_year():
+    """The end of such a range is a year on from the heading's year."""
+
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Gesloten van 30 december tot en met 2 januari"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].dates == [
+        date(2026, 12, 30),
+        date(2026, 12, 31),
+        date(2027, 1, 1),
+        date(2027, 1, 2),
+    ]
+
+
+def test_parse_closing_days_keeps_only_the_ends_of_an_implausible_range():
+    """A closing days list is days off, never a closure of months."""
+
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Gesloten van 1 januari tot en met 31 december 2026"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].dates == [date(2026, 1, 1), date(2026, 12, 31)]
+
+
+def test_parse_closing_days_does_not_read_a_hyphenated_name_as_a_range():
+    """Municipality names such as Geldrop-Mierlo carry a hyphen of their own."""
+
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["1 mei Geldrop-Mierlo en 2 juni 2026"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].dates == [date(2026, 5, 1), date(2026, 6, 2)]
+
+
 def test_parse_closing_days_infers_the_year_without_one_anywhere():
     """No year in the entry and none in the heading: read it as upcoming."""
 

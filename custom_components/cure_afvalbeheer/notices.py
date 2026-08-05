@@ -90,6 +90,16 @@ _DAY_NUMBER = re.compile(r"\d{1,2}")
 # comma list separate days instead of spanning them.
 _RANGE_SEPARATOR = re.compile(r"t/m|tot en met|[-–—]", re.IGNORECASE)
 
+# The same idea between two full dates ("25 december tot en met 4 januari"),
+# where a bare dash has to stand on its own to count: the text between two
+# dates is ordinary prose, and municipality names such as Geldrop-Mierlo
+# carry a hyphen of their own.
+_SPANNING_SEPARATOR = re.compile(r"t/m|tot en met|\s[-–—]\s", re.IGNORECASE)
+
+# A closing days list announces days off around a holiday, not a closure of
+# months; a range coming out longer than this is read as a misparse.
+_MAX_SPAN_DAYS = 31
+
 _YEAR = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
 
 _OPEN_UNTIL = re.compile(
@@ -269,20 +279,91 @@ def _closing_day_date(
     return result
 
 
-def _closing_day_dates(text: str, today: date, heading_year: int | None) -> list[date]:
-    """Extract every date mentioned in one closing days entry."""
+def _dates_in_match(
+    match: re.Match[str], today: date, heading_year: int | None
+) -> list[date]:
+    """Return every date one "<dagen> <maand> [jaar]" match stands for."""
+
+    month = _MONTHS[match.group("month").lower()]
+    year = int(match.group("year")) if match.group("year") else None
 
     result: list[date] = []
 
+    for day in _expand_days(match.group("days")):
+        resolved = _closing_day_date(day, month, year, today, heading_year)
+
+        if resolved is not None:
+            result.append(resolved)
+
+    return result
+
+
+def _a_year_later(dates: list[date]) -> list[date] | None:
+    """Return the same dates one year on, or None if a date does not exist."""
+
+    try:
+        return [date(day.year + 1, day.month, day.day) for day in dates]
+    except ValueError:
+        return None
+
+
+def _span(start: date, dates: list[date], explicit_year: bool) -> list[date]:
+    """Return every day of a range running from start into dates.
+
+    Only the two ends of a range spanning two months are written out ("van
+    25 december tot en met 4 januari"), so the days in between are filled
+    in here. Such a range crosses new year without saying so, which puts
+    its end before its start; that end is then read as the next year.
+
+    A range coming out longer than _MAX_SPAN_DAYS is left as its two ends
+    alone: only those two dates were actually announced, and reading a
+    misparsed line as a closure of months is the more harmful way to be
+    wrong.
+    """
+
+    if dates[0] < start and not explicit_year:
+        shifted = _a_year_later(dates)
+
+        if shifted is not None:
+            dates = shifted
+
+    end = dates[0]
+
+    if end < start or (end - start).days > _MAX_SPAN_DAYS:
+        LOGGER.debug("Ignoring an implausible closing days range: %s to %s", start, end)
+
+        return dates
+
+    between = [
+        start + timedelta(days=offset) for offset in range(1, (end - start).days)
+    ]
+
+    return between + dates
+
+
+def _closing_day_dates(text: str, today: date, heading_year: int | None) -> list[date]:
+    """Extract every date one closing days entry stands for."""
+
+    result: list[date] = []
+
+    previous_end: int | None = None
+
     for match in _CLOSING_DAY_DATE.finditer(text):
-        month = _MONTHS[match.group("month").lower()]
-        year = int(match.group("year")) if match.group("year") else None
+        dates = _dates_in_match(match, today, heading_year)
 
-        for day in _expand_days(match.group("days")):
-            resolved = _closing_day_date(day, month, year, today, heading_year)
+        if (
+            dates
+            and result
+            and previous_end is not None
+            and _SPANNING_SEPARATOR.search(text[previous_end : match.start()])
+        ):
+            dates = _span(result[-1], dates, match.group("year") is not None)
 
-            if resolved is not None and resolved not in result:
-                result.append(resolved)
+        for day in dates:
+            if day not in result:
+                result.append(day)
+
+        previous_end = match.end()
 
     return result
 

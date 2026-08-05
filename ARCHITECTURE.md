@@ -152,10 +152,22 @@ jaartal-bepaling geldt een vaste volgorde - het jaartal in de regel zelf,
 anders dat uit de kop, anders de eerstvolgende keer dat die datum zich
 voordoet. Die
 volgorde is bewust zo: een verouderd jaartal uit de kop levert een datum in
-het verleden op, en die wordt simpelweg nooit toegepast. Regels die geen
-sluiting maar een vervroegde sluitingstijd aankondigen ("geopend tot 16:00
-uur") worden een `Notice` zonder `opens`, zodat `schedule.py` de reguliere
-openingstijd laat staan.
+het verleden op, en die wordt simpelweg nooit toegepast.
+
+Van een reeks ("van 25 december tot en met 4 januari") schrijft Cure alleen
+de twee uiteinden uit; de dagen ertussen worden aangevuld. Zo'n reeks gaat
+zonder het te vermelden over de jaarwisseling heen, waardoor het einde vóór
+het begin uitkomt - dat einde wordt dan een jaar later gelezen. Komt een
+reeks langer uit dan `_MAX_SPAN_DAYS`, dan blijven alleen de twee uiteinden
+staan: een sluitingsdagenlijst gaat over vrije dagen rond een feestdag, en
+een verkeerd gelezen regel als maandenlange sluiting doorzetten is de
+schadelijkste manier om fout te zitten. Een streepje telt tussen twee
+datums alleen als het los staat, omdat gemeentenamen als Geldrop-Mierlo er
+zelf een hebben.
+
+Regels die geen sluiting maar een vervroegde sluitingstijd aankondigen
+("geopend tot 16:00 uur") worden een `Notice` zonder `opens`, zodat
+`schedule.py` de reguliere openingstijd laat staan.
 
 ---
 
@@ -396,10 +408,21 @@ handling. Resolving
 the year follows a fixed order - the year in the line itself, else the one
 from the heading, else the next time that day comes round. That order is
 deliberate: an out-of-date year from the heading produces a date in the
-past, and such a date is simply never applied. A line announcing an earlier
-closing time rather than a closure ("geopend tot 16:00 uur") becomes a
-`Notice` without an `opens`, so `schedule.py` leaves the regular opening
-time in place.
+past, and such a date is simply never applied.
+
+Of a range ("van 25 december tot en met 4 januari") Cure writes out only
+the two ends; the days between them are filled in. Such a range crosses
+new year without saying so, which puts its end before its start - that end
+is then read as a year later. A range coming out longer than
+`_MAX_SPAN_DAYS` keeps its two ends alone: a closing days list is about
+days off around a holiday, and carrying a misread line through as a
+closure of months is the most harmful way to be wrong. Between two dates a
+dash only counts when it stands on its own, since municipality names such
+as Geldrop-Mierlo carry one themselves.
+
+A line announcing an earlier closing time rather than a closure ("geopend
+tot 16:00 uur") becomes a `Notice` without an `opens`, so `schedule.py`
+leaves the regular opening time in place.
 
 ---
 
