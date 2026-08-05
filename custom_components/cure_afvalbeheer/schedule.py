@@ -76,33 +76,52 @@ def resolve_day(
 
     A full closure notice takes precedence over an hours-adjusting one
     (e.g. a heat protocol) when both happen to apply on the same day.
+
+    An hours-adjusting notice only ever narrows a day the regular schedule
+    already opens: it never opens a day that is closed anyway - a Sunday
+    say, or Christmas Day - and it keeps the regular time for whichever of
+    the two it does not announce itself, since Cure usually mentions only
+    the earlier closing time. Where several adjust the same day, the one
+    closing earliest wins, so the outcome does not depend on the order in
+    which the page happened to mention them.
     """
 
     applicable = [
         notice for notice in notices if _notice_applies(notice, location, day)
     ]
 
-    if applicable:
-        notice = next((n for n in applicable if n.closed), applicable[0])
+    closure = next((notice for notice in applicable if notice.closed), None)
 
+    if closure is not None:
         return ResolvedDay(
             date=day,
-            opens=notice.opens,
-            closes=notice.closes,
-            closed=notice.closed,
-            reason=notice.reason,
+            opens=closure.opens,
+            closes=closure.closes,
+            closed=True,
+            reason=closure.reason,
         )
 
     base = hours_for_date(location, day)
 
-    if base is None:
+    if base is None or base.closed:
         return ResolvedDay(date=day, opens=None, closes=None, closed=True, reason=None)
+
+    if applicable:
+        notice = min(applicable, key=lambda item: item.closes or "99:99")
+
+        return ResolvedDay(
+            date=day,
+            opens=notice.opens if notice.opens is not None else base.opens,
+            closes=notice.closes if notice.closes is not None else base.closes,
+            closed=False,
+            reason=notice.reason,
+        )
 
     return ResolvedDay(
         date=day,
         opens=base.opens,
         closes=base.closes,
-        closed=base.closed,
+        closed=False,
         reason=None,
     )
 

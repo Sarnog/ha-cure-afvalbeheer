@@ -164,6 +164,76 @@ def test_resolve_day_prefers_closure_over_hours_adjustment():
     assert result.reason == "verbouwing"
 
 
+def test_resolve_day_keeps_the_regular_opening_time_when_only_closing_moves():
+    """Cure announces "geopend tot 16:00", never the opening time with it."""
+
+    monday = date(2026, 7, 20)
+
+    adjusted = Notice(
+        reason="aangepaste sluitingstijd",
+        title="Afwijkende openingstijden",
+        closed=False,
+        closes="16:00",
+        dates=[monday],
+    )
+
+    result = resolve_day(_LOCATION, monday, notices=[adjusted])
+
+    assert result.opens == "08:30"
+    assert result.closes == "16:00"
+    assert result.closed is False
+    assert result.reason == "aangepaste sluitingstijd"
+
+
+def test_resolve_day_does_not_open_a_closed_day_for_an_hours_adjustment():
+    """A site-wide heat protocol does not make a Sunday an open day."""
+
+    sunday = date(2026, 7, 19)
+
+    heat_protocol = Notice(
+        reason="hitteprotocol",
+        title="Hitteprotocol",
+        closed=False,
+        opens="08:00",
+        closes="14:00",
+        ends=date(2026, 7, 20),
+    )
+
+    result = resolve_day(_LOCATION, sunday, notices=[heat_protocol])
+
+    assert result.closed is True
+    assert result.opens is None
+    assert result.closes is None
+    assert result.reason is None
+
+
+def test_resolve_day_prefers_the_earliest_closing_adjustment():
+    """Order on the page must not decide which adjustment is applied."""
+
+    monday = date(2026, 7, 20)
+
+    heat_protocol = Notice(
+        reason="hitteprotocol",
+        title="Hitteprotocol",
+        closed=False,
+        opens="08:00",
+        closes="14:00",
+        ends=monday,
+    )
+    adjusted = Notice(
+        reason="aangepaste sluitingstijd",
+        title="Afwijkende openingstijden",
+        closed=False,
+        closes="16:00",
+        dates=[monday],
+    )
+
+    result = resolve_day(_LOCATION, monday, notices=[adjusted, heat_protocol])
+
+    assert result.closes == "14:00"
+    assert result.reason == "hitteprotocol"
+
+
 def test_resolve_upcoming_returns_resolved_days():
     monday = date(2026, 7, 20)
 
