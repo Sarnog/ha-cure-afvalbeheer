@@ -277,6 +277,72 @@ def test_reason_sensor_tomorrow_reports_next_day_reason():
 
 
 @freeze_time("2026-07-20 10:00:00")
+def test_reason_sensor_reports_a_closing_day():
+    closing_day = Notice(
+        reason="sluitingsdag",
+        title="Maandag 20 juli 2026 (feestdag)",
+        closed=True,
+        dates=[date(2026, 7, 20)],
+    )
+
+    sensor = _build_reason_sensor(day_offset=0, label="vandaag", notices=[closing_day])
+
+    assert sensor.native_value == "sluitingsdag"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_reason_sensor_reports_an_adjusted_closing_time_a_day_ahead():
+    adjusted = Notice(
+        reason="aangepaste sluitingstijd",
+        title="Afwijkende openingstijden",
+        closed=False,
+        closes="16:00",
+        dates=[date(2026, 7, 21)],
+    )
+
+    sensor = _build_reason_sensor(day_offset=1, label="morgen", notices=[adjusted])
+
+    assert sensor.native_value == "aangepaste sluitingstijd"
+
+
+@freeze_time("2026-07-20 16:30:00")
+def test_native_value_closed_after_an_adjusted_closing_time():
+    """Regular hours run to 17:00, so only the notice can close it at 16:30."""
+
+    adjusted = Notice(
+        reason="aangepaste sluitingstijd",
+        title="Afwijkende openingstijden",
+        closed=False,
+        closes="16:00",
+        dates=[date(2026, 7, 20)],
+    )
+
+    sensor = _build_sensor(notices=[adjusted])
+
+    assert sensor.native_value == "closed"
+
+
+@freeze_time("2026-07-20 10:00:00")
+def test_extra_state_attributes_show_the_adjusted_closing_time():
+    adjusted = Notice(
+        reason="aangepaste sluitingstijd",
+        title="Afwijkende openingstijden",
+        closed=False,
+        closes="16:00",
+        dates=[date(2026, 7, 20)],
+    )
+
+    sensor = _build_sensor(notices=[adjusted])
+
+    assert sensor.extra_state_attributes["today"] == {
+        "date": "2026-07-20",
+        "closed": False,
+        "opens": "08:30",
+        "closes": "16:00",
+    }
+
+
+@freeze_time("2026-07-20 10:00:00")
 def test_reason_sensor_unavailable_when_location_gone():
     sensor = _build_reason_sensor(day_offset=0, label="vandaag", locations=[])
 
