@@ -132,8 +132,6 @@ def test_notices_finds_heat_protocol_and_scoped_closure():
 
     notices = parser.notices(locations, today=date(2026, 7, 10))
 
-    assert len(notices) == 2
-
     heat_protocol = next(n for n in notices if n.reason == "hitteprotocol")
     assert heat_protocol.opens == "08:00"
     assert heat_protocol.closes == "14:00"
@@ -143,3 +141,34 @@ def test_notices_finds_heat_protocol_and_scoped_closure():
     closure = next(n for n in notices if n.reason == "verbouwing")
     assert closure.closed is True
     assert closure.location_hint == "Milieustraat Lodewijkstraat"
+
+
+def test_notices_finds_the_closing_days():
+    """The closing days apply to every recycling centre on the page."""
+
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    parser = CureParser(html)
+    locations = parser.parse_locations()
+
+    notices = parser.notices(locations, today=date(2026, 7, 10))
+
+    closing_days = [n for n in notices if n.reason == "sluitingsdag"]
+
+    assert [day for notice in closing_days for day in notice.dates or []] == [
+        date(2026, 4, 6),
+        date(2026, 4, 27),
+        date(2026, 5, 14),
+        date(2026, 5, 25),
+        date(2026, 12, 25),
+        date(2026, 12, 26),
+        date(2027, 1, 1),
+    ]
+
+    assert all(notice.location_hint is None for notice in closing_days)
+
+    adjusted = next(n for n in notices if n.reason == "aangepaste sluitingstijd")
+    assert adjusted.closes == "16:00"
+    assert adjusted.dates == [date(2026, 12, 24), date(2026, 12, 31)]

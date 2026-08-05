@@ -14,7 +14,11 @@ from .models import (
     Notice,
     OpeningHours,
 )
-from .notices import parse_closure_notice, parse_heat_protocol_notice
+from .notices import (
+    parse_closing_days,
+    parse_closure_notice,
+    parse_heat_protocol_notice,
+)
 from .parsers import (
     is_opening_hours_line,
     parse_opening_hours,
@@ -157,7 +161,7 @@ class CureParser:
         locations: list[Location],
         today: date | None = None,
     ) -> list[Notice]:
-        """Parse temporary deviations (heat protocol, closures)."""
+        """Parse temporary deviations (heat protocol, closures, closing days)."""
 
         if today is None:
             today = date.today()
@@ -188,6 +192,11 @@ class CureParser:
                         closure_heading_text, locations
                     )
                     result.append(closure)
+
+        # No location hint: the closing days are listed once per
+        # municipality page and apply to every recycling centre on it.
+        for heading, lines in selectors.closing_days_blocks(self._soup):
+            result.extend(parse_closing_days(heading, lines, today))
 
         return result
 

@@ -135,6 +135,125 @@ def test_section_with_heading_matches_case_insensitively():
     assert section.find("p").get_text(strip=True) == "Ma 08:30 - 17:00"
 
 
+_CLOSING_DAYS_HTML = """
+<html>
+<body>
+<section>
+<div class="prose">
+    <h2>Openingstijden</h2>
+    <p>Maandag: 08:30 tot 17:00</p>
+    <h2>Sluitingsdagen 2031</h2>
+    <p>De milieustraat is gesloten op onderstaande data:</p>
+    <ul>
+        <li><p>Maandag 6 april 2031 (Pasen)</p></li>
+        <li><p>Vrijdag 25 en zaterdag 26 december 2031 (Kerstmis)</p></li>
+    </ul>
+    <p><strong>Afwijkende openingstijden: geopend tot 16:00 uur.</strong></p>
+    <h3>Toegang milieustraat</h3>
+    <p>Onze poortmedewerkers zijn opgeleid.</p>
+</div>
+</section>
+<section>
+    <h2>Maximale hoeveelheden</h2>
+    <p>Maximaal 2 m3 per bezoek.</p>
+</section>
+</body>
+</html>
+"""
+
+
+def test_closing_days_blocks_ignores_the_year_in_the_heading():
+    """Cure renames this heading every year, and not always on time."""
+
+    soup = BeautifulSoup(_CLOSING_DAYS_HTML, "html.parser")
+
+    blocks = selectors.closing_days_blocks(soup)
+
+    assert len(blocks) == 1
+    assert blocks[0][0] == "Sluitingsdagen 2031"
+
+
+def test_closing_days_blocks_returns_one_line_per_entry():
+    soup = BeautifulSoup(_CLOSING_DAYS_HTML, "html.parser")
+
+    blocks = selectors.closing_days_blocks(soup)
+
+    assert blocks[0][1] == [
+        "De milieustraat is gesloten op onderstaande data:",
+        "Maandag 6 april 2031 (Pasen)",
+        "Vrijdag 25 en zaterdag 26 december 2031 (Kerstmis)",
+        "Afwijkende openingstijden: geopend tot 16:00 uur.",
+        "Onze poortmedewerkers zijn opgeleid.",
+    ]
+
+
+def test_closing_days_blocks_stops_at_the_next_heading_of_its_own_level():
+    soup = BeautifulSoup(_CLOSING_DAYS_HTML, "html.parser")
+
+    blocks = selectors.closing_days_blocks(soup)
+
+    assert "Maximaal 2 m3 per bezoek." not in blocks[0][1]
+
+
+def test_closing_days_blocks_does_not_pick_up_the_opening_hours_above_it():
+    soup = BeautifulSoup(_CLOSING_DAYS_HTML, "html.parser")
+
+    blocks = selectors.closing_days_blocks(soup)
+
+    assert "Maandag: 08:30 tot 17:00" not in blocks[0][1]
+
+
+def test_closing_days_blocks_reads_two_years_side_by_side():
+    """Around the turn of the year the page can carry both lists."""
+
+    html = """
+    <html><body>
+    <h2>Sluitingsdagen 2031</h2>
+    <ul><li>Vrijdag 25 december 2031 (Kerstmis)</li></ul>
+    <h2>Sluitingsdagen 2032</h2>
+    <ul><li>Donderdag 1 januari 2032 (nieuwjaarsdag)</li></ul>
+    </body></html>
+    """
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    blocks = selectors.closing_days_blocks(soup)
+
+    assert [heading for heading, _ in blocks] == [
+        "Sluitingsdagen 2031",
+        "Sluitingsdagen 2032",
+    ]
+    assert blocks[0][1] == ["Vrijdag 25 december 2031 (Kerstmis)"]
+    assert blocks[1][1] == ["Donderdag 1 januari 2032 (nieuwjaarsdag)"]
+
+
+def test_closing_days_blocks_falls_back_when_the_heading_is_wrapped():
+    """If Cure ever gives the heading a wrapper, it has no content siblings."""
+
+    html = """
+    <html><body>
+    <div><h2>Sluitingsdagen 2031</h2></div>
+    <div><p>Maandag 6 april 2031 (Pasen)</p></div>
+    <h2>Maximale hoeveelheden</h2>
+    <p>Maximaal 2 m3 per bezoek.</p>
+    </body></html>
+    """
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    blocks = selectors.closing_days_blocks(soup)
+
+    assert blocks[0][1] == ["Maandag 6 april 2031 (Pasen)"]
+
+
+def test_closing_days_blocks_returns_nothing_without_the_heading():
+    soup = BeautifulSoup(
+        "<html><body><h2>Openingstijden</h2></body></html>", "html.parser"
+    )
+
+    assert selectors.closing_days_blocks(soup) == []
+
+
 def test_section_with_heading_falls_back_to_div_wrapper():
     """If Cure wraps the heading in a <div> instead of <section>, still find it."""
 

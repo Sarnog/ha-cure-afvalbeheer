@@ -5,6 +5,10 @@ from __future__ import annotations
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
+_HEADING_LEVELS = ("h1", "h2", "h3", "h4")
+
+_CLOSING_DAYS_HEADING = "sluitingsdag"
+
 
 def page_title(soup: BeautifulSoup) -> str:
     """Return de paginatitel."""
@@ -18,14 +22,7 @@ def page_title(soup: BeautifulSoup) -> str:
 def headings(soup: BeautifulSoup) -> list[Tag]:
     """Return alle headings."""
 
-    return soup.find_all(
-        [
-            "h1",
-            "h2",
-            "h3",
-            "h4",
-        ]
-    )
+    return soup.find_all(list(_HEADING_LEVELS))
 
 
 def main_content(soup: BeautifulSoup) -> Tag | None:
@@ -167,3 +164,94 @@ def closure_notice_section(soup: BeautifulSoup) -> Tag | None:
             return heading.find_parent(["section", "div", "article"]) or heading.parent
 
     return None
+
+
+def _plain_text(element: Tag) -> str:
+    """Return an element's text with non-breaking spaces normalised."""
+
+    return element.get_text(" ", strip=True).replace("\xa0", " ").strip()
+
+
+def _block_end_tags(heading: Tag) -> tuple[str, ...]:
+    """Return the heading tags that end the block started by heading."""
+
+    if heading.name not in _HEADING_LEVELS:
+        return _HEADING_LEVELS
+
+    return _HEADING_LEVELS[: _HEADING_LEVELS.index(heading.name) + 1]
+
+
+def _text_elements_after(heading: Tag) -> list[Tag]:
+    """Return the paragraphs and list items belonging to heading's block.
+
+    Cure gives this content no container of its own, so it is collected by
+    walking forward from the heading until the next heading of the same or
+    a higher level. The sibling walk is the precise one; the document-order
+    walk is a fallback for the day the heading gets wrapped in an element
+    of its own, which would leave it without any content siblings at all.
+    """
+
+    end_tags = _block_end_tags(heading)
+
+    elements: list[Tag] = []
+
+    for sibling in heading.next_siblings:
+        if not isinstance(sibling, Tag):
+            continue
+
+        if sibling.name in end_tags:
+            return elements
+
+        if sibling.name in ("p", "li"):
+            elements.append(sibling)
+
+        elements.extend(sibling.find_all(["p", "li"]))
+
+    if elements:
+        return elements
+
+    for element in heading.find_all_next():
+        if element.name in end_tags:
+            break
+
+        if element.name in ("p", "li"):
+            elements.append(element)
+
+    return elements
+
+
+def closing_days_blocks(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
+    """Return every "Sluitingsdagen" heading with its own text lines.
+
+    Cure renames this heading every year ("Sluitingsdagen 2026") and does
+    not always do so on time - halfway through 2025 the page still said
+    2024 - so only the word itself is matched here and the year is left
+    for the caller to treat as a hint rather than a fact. Around the turn
+    of the year the page can carry two of these lists at once, hence every
+    match is returned rather than only the first.
+    """
+
+    blocks: list[tuple[str, list[str]]] = []
+
+    for heading in soup.find_all(list(_HEADING_LEVELS)):
+        title = _plain_text(heading)
+
+        if not title.lower().startswith(_CLOSING_DAYS_HEADING):
+            continue
+
+        lines: list[str] = []
+
+        for element in _text_elements_after(heading):
+            # A <li><p>...</p></li> yields both elements, which is the
+            # same line twice.
+            if element.name == "p" and element.find_parent("li") is not None:
+                continue
+
+            line = _plain_text(element)
+
+            if line:
+                lines.append(line)
+
+        blocks.append((title, lines))
+
+    return blocks

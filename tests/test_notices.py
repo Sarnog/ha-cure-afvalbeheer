@@ -1,6 +1,8 @@
 from datetime import date
 
 from custom_components.cure_afvalbeheer.notices import (
+    parse_adjusted_closing_time,
+    parse_closing_days,
     parse_closure_notice,
     parse_dated_list,
     parse_explicit_closure_date,
@@ -35,6 +37,39 @@ _VALKENSWAARD_CLOSURE_BODY = (
 )
 
 _NO_NOTICE_HEADING = "Inpaktips voor vertrek"
+
+# Real text captured live from cure-afvalbeheer.nl on 2026-08-05.
+_CLOSING_DAYS_HEADING = "Sluitingsdagen 2026"
+_CLOSING_DAYS_LINES = [
+    "De milieustraat is gesloten op onderstaande data:",
+    "Maandag 6 april 2026 (Pasen)",
+    "Maandag 27 april 2026 (Koningsdag)",
+    "Donderdag 14 mei 2026 (Hemelvaartsdag)",
+    "Maandag 25 mei 2026 (Tweede Pinksterdag)",
+    "Vrijdag 25 en zaterdag 26 december 2026 (Kerstmis)",
+    "Vrijdag 1 januari 2027 (nieuwjaarsdag)",
+    "Afwijkende openingstijden: op donderdag 24 december (Kerstavond) en "
+    "donderdag 31 december (Oudejaarsavond) is de milieustraat geopend tot "
+    "16:00 uur.",
+    "Ben op tijd. Heb je te veel afval bij waardoor je de openingstijd "
+    "overschrijdt, kan toegang worden geweigerd. De poortmedewerker oordeelt "
+    "hierover.",
+    "Zorg ervoor dat je de Cure milieupas bij hebt. Zonder Cure milieupas is "
+    "toegang tot de milieustraat niet mogelijk.",
+]
+
+# The same block as Cure worded it before the 2025 website rebuild: the
+# holiday name comes first, the weekday is missing and so is the year.
+_OLD_CLOSING_DAYS_HEADING = "Sluitingsdagen 2024"
+_OLD_CLOSING_DAYS_LINES = [
+    "De milieustraat is gesloten op onderstaande data:",
+    "2e Paasdag, 1 april",
+    "Koningsdag, 27 april",
+    "1e Kerstdag, 25 december",
+    "1 januari 2025",
+    "Op Kerstavond, dinsdag 24 december, én Oudjaarsavond, dinsdag 31 "
+    "december, sluiten de milieustraten om 16 uur.",
+]
 
 
 def test_parse_time_range_with_tot():
@@ -146,3 +181,125 @@ def test_parse_closure_notice_returns_none_without_parsable_date():
     )
 
     assert notice is None
+
+
+def test_parse_adjusted_closing_time():
+    result = parse_adjusted_closing_time("is de milieustraat geopend tot 16:00 uur")
+
+    assert result == "16:00"
+
+
+def test_parse_adjusted_closing_time_without_minutes():
+    assert parse_adjusted_closing_time("sluiten de milieustraten om 16 uur") == "16:00"
+
+
+def test_parse_adjusted_closing_time_ignores_a_regular_opening_hours_line():
+    assert parse_adjusted_closing_time("Maandag: 08:30 tot 17:00") is None
+
+
+def test_parse_adjusted_closing_time_rejects_an_impossible_time():
+    assert parse_adjusted_closing_time("geopend tot 45:99 uur") is None
+
+
+def test_parse_closing_days_reads_every_listed_day():
+    notices = parse_closing_days(
+        _CLOSING_DAYS_HEADING, _CLOSING_DAYS_LINES, date(2026, 8, 5)
+    )
+
+    closures = [notice for notice in notices if notice.closed]
+
+    assert [notice.dates for notice in closures] == [
+        [date(2026, 4, 6)],
+        [date(2026, 4, 27)],
+        [date(2026, 5, 14)],
+        [date(2026, 5, 25)],
+        [date(2026, 12, 25), date(2026, 12, 26)],  # "25 en zaterdag 26 december"
+        [date(2027, 1, 1)],
+    ]
+
+    assert {notice.reason for notice in closures} == {"sluitingsdag"}
+
+
+def test_parse_closing_days_reads_the_adjusted_closing_time():
+    notices = parse_closing_days(
+        _CLOSING_DAYS_HEADING, _CLOSING_DAYS_LINES, date(2026, 8, 5)
+    )
+
+    adjusted = [notice for notice in notices if not notice.closed]
+
+    assert len(adjusted) == 1
+    assert adjusted[0].reason == "aangepaste sluitingstijd"
+    assert adjusted[0].closes == "16:00"
+    assert adjusted[0].opens is None  # keeps the regular opening time
+    # The year is missing from the sentence and taken from the heading.
+    assert adjusted[0].dates == [date(2026, 12, 24), date(2026, 12, 31)]
+
+
+def test_parse_closing_days_ignores_lines_without_a_date():
+    notices = parse_closing_days(
+        _CLOSING_DAYS_HEADING, _CLOSING_DAYS_LINES, date(2026, 8, 5)
+    )
+
+    assert len(notices) == 7  # six closing days plus one adjusted closing time
+
+
+def test_parse_closing_days_handles_the_pre_2025_wording():
+    """Weekday-less entries, the holiday name first and no year at all."""
+
+    notices = parse_closing_days(
+        _OLD_CLOSING_DAYS_HEADING, _OLD_CLOSING_DAYS_LINES, date(2025, 6, 1)
+    )
+
+    assert [notice.dates for notice in notices] == [
+        [date(2024, 4, 1)],
+        [date(2024, 4, 27)],
+        [date(2024, 12, 25)],
+        [date(2025, 1, 1)],  # the only entry that spells out its own year
+        [date(2024, 12, 24), date(2024, 12, 31)],
+    ]
+
+    assert notices[-1].closes == "16:00"
+
+
+def test_parse_closing_days_expands_a_range():
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Van 23 t/m 27 december 2026 gesloten"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].dates == [
+        date(2026, 12, 23),
+        date(2026, 12, 24),
+        date(2026, 12, 25),
+        date(2026, 12, 26),
+        date(2026, 12, 27),
+    ]
+
+
+def test_parse_closing_days_infers_the_year_without_one_anywhere():
+    """No year in the entry and none in the heading: read it as upcoming."""
+
+    notices = parse_closing_days("Sluitingsdagen", ["25 december"], date(2026, 8, 5))
+
+    assert notices[0].dates == [date(2026, 12, 25)]
+
+
+def test_parse_closing_days_rolls_a_bare_date_over_into_next_year():
+    notices = parse_closing_days("Sluitingsdagen", ["1 januari"], date(2026, 8, 5))
+
+    assert notices[0].dates == [date(2027, 1, 1)]
+
+
+def test_parse_closing_days_returns_nothing_for_an_unparsable_block():
+    assert (
+        parse_closing_days("Sluitingsdagen 2026", ["Zie de kalender"], date.today())
+        == []
+    )
+
+
+def test_parse_closing_days_skips_an_impossible_date():
+    assert (
+        parse_closing_days("Sluitingsdagen 2026", ["30 februari 2026"], date.today())
+        == []
+    )
