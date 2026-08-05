@@ -1,7 +1,7 @@
 from datetime import date
 
 from custom_components.cure_afvalbeheer.notices import (
-    parse_adjusted_closing_time,
+    parse_adjusted_hours,
     parse_closing_days,
     parse_closure_notice,
     parse_dated_list,
@@ -183,22 +183,52 @@ def test_parse_closure_notice_returns_none_without_parsable_date():
     assert notice is None
 
 
-def test_parse_adjusted_closing_time():
-    result = parse_adjusted_closing_time("is de milieustraat geopend tot 16:00 uur")
-
-    assert result == "16:00"
-
-
-def test_parse_adjusted_closing_time_without_minutes():
-    assert parse_adjusted_closing_time("sluiten de milieustraten om 16 uur") == "16:00"
+def test_parse_adjusted_hours_reads_a_closing_time_only():
+    assert parse_adjusted_hours("is de milieustraat geopend tot 16:00 uur") == (
+        None,
+        "16:00",
+    )
 
 
-def test_parse_adjusted_closing_time_ignores_a_regular_opening_hours_line():
-    assert parse_adjusted_closing_time("Maandag: 08:30 tot 17:00") is None
+def test_parse_adjusted_hours_reads_a_closing_time_without_minutes():
+    assert parse_adjusted_hours("sluiten de milieustraten om 16 uur") == (None, "16:00")
 
 
-def test_parse_adjusted_closing_time_rejects_an_impossible_time():
-    assert parse_adjusted_closing_time("geopend tot 45:99 uur") is None
+def test_parse_adjusted_hours_reads_an_opening_time_only():
+    assert parse_adjusted_hours("zijn we pas vanaf 10:00 uur open") == ("10:00", None)
+
+
+def test_parse_adjusted_hours_reads_both_sides():
+    assert parse_adjusted_hours(
+        "is de milieustraat geopend van 10:00 tot 16:00 uur"
+    ) == (
+        "10:00",
+        "16:00",
+    )
+
+
+def test_parse_adjusted_hours_reads_a_later_closing_time():
+    """Any combination counts - a range is not assumed to be a shortening."""
+
+    assert parse_adjusted_hours("geopend van 10:00 tot 18:00 uur") == ("10:00", "18:00")
+
+
+def test_parse_adjusted_hours_reads_a_range_of_whole_hours():
+    assert parse_adjusted_hours("geopend van 10 tot 16 uur") == ("10:00", "16:00")
+
+
+def test_parse_adjusted_hours_ignores_a_regular_opening_hours_line():
+    assert parse_adjusted_hours("Maandag: 08:30 tot 17:00") == (None, None)
+
+
+def test_parse_adjusted_hours_does_not_read_a_date_as_a_time():
+    """ "vanaf 6 april" is a date; only "uur" or minutes make it a time."""
+
+    assert parse_adjusted_hours("Gesloten vanaf 6 april") == (None, None)
+
+
+def test_parse_adjusted_hours_rejects_an_impossible_time():
+    assert parse_adjusted_hours("geopend tot 45:99 uur") == (None, None)
 
 
 def test_parse_closing_days_reads_every_listed_day():
@@ -228,7 +258,7 @@ def test_parse_closing_days_reads_the_adjusted_closing_time():
     adjusted = [notice for notice in notices if not notice.closed]
 
     assert len(adjusted) == 1
-    assert adjusted[0].reason == "aangepaste sluitingstijd"
+    assert adjusted[0].reason == "aangepaste openingstijden"
     assert adjusted[0].closes == "16:00"
     assert adjusted[0].opens is None  # keeps the regular opening time
     # The year is missing from the sentence and taken from the heading.
@@ -275,6 +305,56 @@ def test_parse_closing_days_expands_a_range():
         date(2026, 12, 26),
         date(2026, 12, 27),
     ]
+
+
+def test_parse_closing_days_reads_a_line_adjusting_both_sides():
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Op donderdag 24 december geopend van 10:00 tot 16:00 uur"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].closed is False
+    assert notices[0].opens == "10:00"
+    assert notices[0].closes == "16:00"
+    assert notices[0].dates == [date(2026, 12, 24)]
+
+
+def test_parse_closing_days_reads_a_line_adjusting_the_opening_only():
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Op donderdag 24 december zijn we pas vanaf 10:00 uur open"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].closed is False
+    assert notices[0].opens == "10:00"
+    assert notices[0].closes is None  # the regular closing time stands
+
+
+def test_parse_closing_days_skips_an_open_day_whose_times_are_unreadable():
+    """Calling such a day closed would state the opposite of the line."""
+
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Op donderdag 24 december gaan we later open"],
+        date(2026, 8, 5),
+    )
+
+    assert notices == []
+
+
+def test_parse_closing_days_still_closes_a_day_that_says_it_is_closed():
+    """An open-sounding word must not rescue a line that says "gesloten"."""
+
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Vrijdag 25 december 2026 gesloten, milieustraat Acht is wel open"],
+        date(2026, 8, 5),
+    )
+
+    assert notices[0].closed is True
+    assert notices[0].dates == [date(2026, 12, 25)]
 
 
 def test_parse_closing_days_expands_a_range_across_a_month_boundary():

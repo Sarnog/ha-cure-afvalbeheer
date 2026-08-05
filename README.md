@@ -35,7 +35,8 @@ zoals:
 - tijdelijke sluitingen (bijvoorbeeld wegens werkzaamheden)
 - verbouwingen
 - de sluitingsdagen rond feestdagen (Pasen, Koningsdag, Kerstmis, …)
-- een vervroegde sluitingstijd op dagen als Kerstavond en Oudejaarsavond
+- aangepaste openingstijden op dagen als Kerstavond en Oudejaarsavond —
+  later open, eerder dicht, of allebei
 
 Alle informatie wordt rechtstreeks opgehaald vanaf de officiële Cure-website —
 er is geen los RSS-abonnement nodig.
@@ -66,8 +67,11 @@ er is geen los RSS-abonnement nodig.
   verbouwingen worden uit dezelfde pagina geparst en passen de status en
   openingstijden automatisch aan, met een reden erbij.
 - **Feestdagen en sluitingsdagen** — de lijst met sluitingsdagen op de
-  gemeentepagina wordt meegenomen, inclusief de dagen waarop de milieustraat
-  eerder sluit (Kerstavond, Oudejaarsavond). Cure zet het jaartal in het kopje
+  gemeentepagina wordt meegenomen, inclusief de dagen met afwijkende
+  openingstijden (Kerstavond, Oudejaarsavond). Elke combinatie werkt: alleen
+  een andere sluitingstijd, alleen een andere openingstijd, of allebei. De
+  kant die Cure niet noemt houdt gewoon de reguliere tijd aan. Cure zet het
+  jaartal in het kopje
   ("Sluitingsdagen 2026") en werkt dat niet altijd op tijd bij, dus de
   integratie leest elke datum uit de regels zelf en gebruikt het jaartal in het
   kopje hooguit als hint. Staat een regel in een onbekende schrijfwijze, dan
@@ -113,7 +117,7 @@ Elke milieustraat krijgt vijf sensoren:
 - **`sensor.<device>_<milieustraat>_reden_vandaag`** en
   **`..._reden_morgen`** — leeg (`""`) als er geen afwijking is, anders de
   reden (`hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag`,
-  `aangepaste sluitingstijd`).
+  `aangepaste openingstijden`).
 - **`sensor.<device>_<milieustraat>_volgende_open`** en
   **`..._volgende_close`** — timestamp van de eerstvolgende keer dat de
   milieustraat open respectievelijk dicht gaat, binnen het ingestelde
@@ -335,7 +339,7 @@ manieren, van simpel naar flexibel:
    en stuur in de actie een melding met `{{ trigger.to_state.state }}` als
    reden. De sensorwaarde is leeg (`""`) zolang er geen afwijking is, en
    anders `hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag` of
-   `aangepaste sluitingstijd`.
+   `aangepaste openingstijden`.
 
 ### Voorbeeld: navigatie-knop
 
@@ -426,7 +430,8 @@ as:
 - temporary closures (e.g. due to maintenance work)
 - renovations
 - the closing days around public holidays (Easter, King's Day, Christmas, …)
-- an earlier closing time on days such as Christmas Eve and New Year's Eve
+- adjusted hours on days such as Christmas Eve and New Year's Eve — opening
+  later, closing earlier, or both
 
 All information is fetched directly from the official Cure website — no
 separate RSS subscription is needed.
@@ -456,8 +461,11 @@ separate RSS subscription is needed.
   are parsed from the same page and automatically adjust the status and opening
   hours, with a reason attached.
 - **Public holidays and closing days** — the list of closing days on the
-  municipality page is picked up as well, including the days the recycling
-  centre closes early (Christmas Eve, New Year's Eve). Cure puts the year in the
+  municipality page is picked up as well, including the days with adjusted
+  hours (Christmas Eve, New Year's Eve). Every combination works: a different
+  closing time only, a different opening time only, or both. Whichever side
+  Cure leaves unmentioned simply keeps its regular time. Cure puts the year in
+  the
   heading ("Sluitingsdagen 2026") and does not always update it in time, so the
   integration reads every date from the entries themselves and treats the year
   in the heading as no more than a hint. An entry in an unfamiliar wording is
@@ -504,7 +512,7 @@ Each recycling centre gets five sensors:
 - **`sensor.<device>_<milieustraat>_reden_vandaag`** and
   **`..._reden_morgen`** — empty (`""`) if there is no deviation, otherwise
   the reason (`hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag`,
-  `aangepaste sluitingstijd` — these values are always Dutch, since that is
+  `aangepaste openingstijden` — these values are always Dutch, since that is
   what the integration itself produces).
 - **`sensor.<device>_<milieustraat>_volgende_open`** and
   **`..._volgende_close`** — timestamp of the next time the recycling
@@ -724,7 +732,7 @@ the day itself arrives. There are two ways, from simple to flexible:
    then send a notification with `{{ trigger.to_state.state }}` as the
    reason. The sensor value is empty (`""`) while there is no deviation, and
    otherwise `hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag` or
-   `aangepaste sluitingstijd`.
+   `aangepaste openingstijden`.
 
 ### Example: navigation button
 

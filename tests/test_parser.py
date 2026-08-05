@@ -170,7 +170,7 @@ def test_notices_finds_the_closing_days():
 
     assert all(notice.location_hint is None for notice in closing_days)
 
-    adjusted = next(n for n in notices if n.reason == "aangepaste sluitingstijd")
+    adjusted = next(n for n in notices if n.reason == "aangepaste openingstijden")
     assert adjusted.closes == "16:00"
     assert adjusted.dates == [date(2026, 12, 24), date(2026, 12, 31)]
 

@@ -102,15 +102,41 @@ _MAX_SPAN_DAYS = 31
 
 _YEAR = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
 
+# A full range ("geopend van 10:00 tot 16:00 uur"). Both numbers have to
+# sit right against the separator, which is what keeps a date out of it:
+# "geopend van 6 april tot 8 mei" has a month name in the way.
+_ADJUSTED_RANGE = re.compile(
+    r"\b(?:geopend|open)\s+(?:van|vanaf)\s+"
+    r"(?P<open_hour>\d{1,2})(?:[:.](?P<open_minute>\d{2}))?(?!\d)"
+    r"\s*(?:uur\s+)?(?:tot(?:\s+en\s+met)?|t/m|[-–—])\s*"
+    r"(?P<close_hour>\d{1,2})(?:[:.](?P<close_minute>\d{2}))?(?!\d)",
+    re.IGNORECASE,
+)
+
 _OPEN_UNTIL = re.compile(
-    r"\b(?:geopend|open)\s+tot\s+(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?",
+    r"\b(?:geopend|open)\s+tot\s+(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?(?!\d)",
     re.IGNORECASE,
 )
 
 _CLOSES_AT = re.compile(
-    r"\bsluit(?:en)?(?:\s+\w+){0,4}?\s+om\s+(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?",
+    r"\bsluit(?:en)?(?:\s+\w+){0,4}?\s+om\s+"
+    r"(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?(?!\d)",
     re.IGNORECASE,
 )
+
+_OPENS_AT = re.compile(
+    r"\b(?:(?:geopend|open)\s+(?:vanaf|om)|vanaf|pas\s+om)\s+"
+    r"(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?(?!\d)",
+    re.IGNORECASE,
+)
+
+_TRAILING_HOUR_UNIT = re.compile(r"^\s*uur\b", re.IGNORECASE)
+
+# Wording that says the location is open rather than shut. Both are whole
+# words: "openingstijden" is not a statement that anything is open.
+_OPEN_WORDING = re.compile(r"\b(?:geopend|open|opent|openen|opengaan)\b", re.IGNORECASE)
+
+_CLOSED_WORDING = re.compile(r"\b(?:gesloten|dicht|sluit\w*)\b", re.IGNORECASE)
 
 
 def parse_time_range(text: str) -> tuple[str, str] | None:
@@ -191,28 +217,72 @@ def parse_dated_list(text: str) -> list[date]:
     return result
 
 
-def parse_adjusted_closing_time(text: str) -> str | None:
-    """Extract an announced closing time ("geopend tot 16:00 uur").
+def _hhmm(hour: str, minute: str | None) -> str | None:
+    """Return an "HH:MM" time, or None if the numbers are not a time."""
 
-    Also accepts the older wording ("sluiten de milieustraten om 16 uur"),
-    including a whole-hour time without minutes.
+    hours = int(hour)
+    minutes = int(minute) if minute is not None else 0
+
+    if hours > 23 or minutes > 59:
+        return None
+
+    return f"{hours:02d}:{minutes:02d}"
+
+
+def _lone_time(match: re.Match[str], text: str) -> str | None:
+    """Return the time a single-time match found, if it is one at all.
+
+    A whole hour only counts as a time when "uur" follows it: "vanaf 10
+    uur" is a time, "vanaf 6 april" is a date. A time written with minutes
+    needs no such confirmation.
     """
+
+    minute = match.group("minute")
+
+    if minute is None and not _TRAILING_HOUR_UNIT.match(text[match.end() :]):
+        return None
+
+    return _hhmm(match.group("hour"), minute)
+
+
+def parse_adjusted_hours(text: str) -> tuple[str | None, str | None]:
+    """Extract an announced opening and closing time from free text.
+
+    Returns them as (opens, closes), either of which is None when the text
+    does not announce that side - Cure usually names only the closing time
+    ("geopend tot 16:00 uur"), leaving the regular opening time in force.
+    A full range ("geopend van 10:00 tot 16:00 uur") and a lone opening
+    time ("pas vanaf 10:00 uur open") are recognised just as well, as is
+    the older closing wording ("sluiten de milieustraten om 16 uur").
+    """
+
+    range_match = _ADJUSTED_RANGE.search(text)
+
+    if range_match is not None:
+        opens = _hhmm(range_match.group("open_hour"), range_match.group("open_minute"))
+        closes = _hhmm(
+            range_match.group("close_hour"), range_match.group("close_minute")
+        )
+
+        if opens is not None and closes is not None:
+            return opens, closes
+
+    closes = None
 
     for pattern in (_OPEN_UNTIL, _CLOSES_AT):
         match = pattern.search(text)
 
-        if match is None:
-            continue
+        if match is not None:
+            closes = _lone_time(match, text)
 
-        hour = int(match.group("hour"))
-        minute = int(match.group("minute") or 0)
+        if closes is not None:
+            break
 
-        if hour > 23 or minute > 59:
-            continue
+    match = _OPENS_AT.search(text)
 
-        return f"{hour:02d}:{minute:02d}"
+    opens = _lone_time(match, text) if match is not None else None
 
-    return None
+    return opens, closes
 
 
 def _expand_days(days: str) -> list[int]:
@@ -368,15 +438,43 @@ def _closing_day_dates(text: str, today: date, heading_year: int | None) -> list
     return result
 
 
+def _closing_days_notice(line: str, dates: list[date]) -> Notice | None:
+    """Turn one dated closing days entry into a notice.
+
+    A line naming an opening or closing time adjusts that day's hours; one
+    naming neither closes it. A line that says the location is open on
+    that date but whose times could not be read yields nothing at all,
+    since calling it closed would state the opposite of what it says.
+    """
+
+    opens, closes = parse_adjusted_hours(line)
+
+    if opens is not None or closes is not None:
+        return Notice(
+            reason="aangepaste openingstijden",
+            title=line,
+            closed=False,
+            opens=opens,
+            closes=closes,
+            dates=dates,
+        )
+
+    if _OPEN_WORDING.search(line) and not _CLOSED_WORDING.search(line):
+        LOGGER.debug("Skipping a closing days entry with unreadable times: %s", line)
+
+        return None
+
+    return Notice(reason="sluitingsdag", title=line, closed=True, dates=dates)
+
+
 def parse_closing_days(heading: str, lines: list[str], today: date) -> list[Notice]:
     """Parse the "Sluitingsdagen" block into notices.
 
     Every line becomes at most one Notice: a full closure for a listed
-    closing day, or a closing time adjustment for a line announcing that
-    the recycling centre stays open until some other time than usual.
-    Lines without a date (the intro sentence, the house rules that share
-    the block) yield nothing, so surrounding prose is ignored rather than
-    misread.
+    closing day, or an hours adjustment for a line announcing different
+    opening times on it. Lines without a date (the intro sentence, the
+    house rules that share the block) yield nothing, so surrounding prose
+    is ignored rather than misread.
     """
 
     heading_year_match = _YEAR.search(heading)
@@ -390,28 +488,10 @@ def parse_closing_days(heading: str, lines: list[str], today: date) -> list[Noti
         if not dates:
             continue
 
-        closes = parse_adjusted_closing_time(line)
+        notice = _closing_days_notice(line, dates)
 
-        if closes is not None:
-            result.append(
-                Notice(
-                    reason="aangepaste sluitingstijd",
-                    title=line,
-                    closed=False,
-                    closes=closes,
-                    dates=dates,
-                )
-            )
-            continue
-
-        result.append(
-            Notice(
-                reason="sluitingsdag",
-                title=line,
-                closed=True,
-                dates=dates,
-            )
-        )
+        if notice is not None:
+            result.append(notice)
 
     if not result:
         LOGGER.debug("Found a closing days block but could not parse it: %s", heading)

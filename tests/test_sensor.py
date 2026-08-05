@@ -293,7 +293,7 @@ def test_reason_sensor_reports_a_closing_day():
 @freeze_time("2026-07-20 10:00:00")
 def test_reason_sensor_reports_an_adjusted_closing_time_a_day_ahead():
     adjusted = Notice(
-        reason="aangepaste sluitingstijd",
+        reason="aangepaste openingstijden",
         title="Afwijkende openingstijden",
         closed=False,
         closes="16:00",
@@ -302,7 +302,7 @@ def test_reason_sensor_reports_an_adjusted_closing_time_a_day_ahead():
 
     sensor = _build_reason_sensor(day_offset=1, label="morgen", notices=[adjusted])
 
-    assert sensor.native_value == "aangepaste sluitingstijd"
+    assert sensor.native_value == "aangepaste openingstijden"
 
 
 @freeze_time("2026-07-20 16:30:00")
@@ -310,7 +310,7 @@ def test_native_value_closed_after_an_adjusted_closing_time():
     """Regular hours run to 17:00, so only the notice can close it at 16:30."""
 
     adjusted = Notice(
-        reason="aangepaste sluitingstijd",
+        reason="aangepaste openingstijden",
         title="Afwijkende openingstijden",
         closed=False,
         closes="16:00",
@@ -325,7 +325,7 @@ def test_native_value_closed_after_an_adjusted_closing_time():
 @freeze_time("2026-07-20 10:00:00")
 def test_extra_state_attributes_show_the_adjusted_closing_time():
     adjusted = Notice(
-        reason="aangepaste sluitingstijd",
+        reason="aangepaste openingstijden",
         title="Afwijkende openingstijden",
         closed=False,
         closes="16:00",

@@ -165,9 +165,17 @@ schadelijkste manier om fout te zitten. Een streepje telt tussen twee
 datums alleen als het los staat, omdat gemeentenamen als Geldrop-Mierlo er
 zelf een hebben.
 
-Regels die geen sluiting maar een vervroegde sluitingstijd aankondigen
-("geopend tot 16:00 uur") worden een `Notice` zonder `opens`, zodat
-`schedule.py` de reguliere openingstijd laat staan.
+Regels die geen sluiting maar andere openingstijden aankondigen leveren een
+`Notice` met alleen de kant die genoemd wordt: "geopend tot 16:00 uur" vult
+`closes`, "pas vanaf 10:00 uur open" vult `opens`, en "geopend van 10:00 tot
+16:00 uur" allebei. De niet-genoemde kant blijft `None`, zodat `schedule.py`
+daar de reguliere tijd voor aanhoudt. Een los uur telt alleen als tijd
+wanneer er "uur" achter staat - "vanaf 6 april" is een datum, geen 06:00.
+
+Kondigt een regel wél aan dat de milieustraat open is, maar zijn de tijden
+niet te lezen, dan levert die regel niets op. Als sluiting doorzetten zou
+namelijk precies het tegenovergestelde beweren van wat er staat. Bevat de
+regel daarnaast een sluitingswoord, dan wint de sluiting alsnog.
 
 ---
 
@@ -182,13 +190,15 @@ die datum en locatie hoort, en leveren een `ResolvedDay` met een
 van het reguliere rooster.
 
 Daarbij gelden drie regels. Een sluiting wint altijd van een
-tijden-aanpassing. Een tijden-aanpassing verkort alleen een dag die
+tijden-aanpassing. Een tijden-aanpassing geldt alleen op een dag die
 volgens het reguliere rooster al open is - een hitteprotocol maakt van een
-zondag dus geen open dag - en neemt de reguliere tijd over voor de kant die
-de melding zelf niet noemt, omdat Cure meestal alleen de vervroegde
-sluitingstijd vermeldt. Gelden er meerdere tijden-aanpassingen op dezelfde
-dag, dan wint de vroegste sluitingstijd, zodat de uitkomst niet afhangt van
-de volgorde waarin de pagina ze toevallig noemt.
+zondag dus geen open dag. Openings- en sluitingstijd worden los van elkaar
+afgehandeld: de kant die de melding niet noemt houdt de reguliere tijd, en
+gelden er meerdere aanpassingen op dezelfde dag, dan wint per kant de
+striktste - de laatste openingstijd en de vroegste sluitingstijd. Zo hangt
+de uitkomst nooit af van de volgorde waarin de pagina ze toevallig noemt.
+De `reason` komt van de melding achter de sluitingstijd, want daar loopt
+een bezoeker het eerst tegenaan.
 
 `next_open_close` loopt over een al opgeloste
 `ResolvedDay`-lijst en levert de eerstvolgende open- en sluitingstijd als
@@ -420,9 +430,17 @@ closure of months is the most harmful way to be wrong. Between two dates a
 dash only counts when it stands on its own, since municipality names such
 as Geldrop-Mierlo carry one themselves.
 
-A line announcing an earlier closing time rather than a closure ("geopend
-tot 16:00 uur") becomes a `Notice` without an `opens`, so `schedule.py`
-leaves the regular opening time in place.
+A line announcing different hours rather than a closure yields a `Notice`
+carrying only the side it names: "geopend tot 16:00 uur" fills `closes`,
+"pas vanaf 10:00 uur open" fills `opens`, and "geopend van 10:00 tot 16:00
+uur" fills both. The unnamed side stays `None`, so `schedule.py` keeps the
+regular time there. A lone hour only counts as a time when "uur" follows
+it - "vanaf 6 april" is a date, not 06:00.
+
+A line that does say the recycling centre is open but whose times cannot be
+read yields nothing at all: carrying it through as a closure would claim
+the exact opposite of what it says. If such a line also carries a word for
+being shut, the closure wins after all.
 
 ---
 
@@ -436,13 +454,14 @@ that date and location, producing a `ResolvedDay` with a `reason` field so
 entities can show *why* a day deviates from the regular schedule.
 
 Three rules govern that. A closure always beats an hours adjustment. An
-hours adjustment only ever narrows a day the regular schedule already
-opens - a heat protocol does not turn a Sunday into an open day - and
-inherits the regular time for whichever side the notice does not mention
-itself, since Cure usually announces only the earlier closing time. Where
-several hours adjustments land on the same day, the earliest closing time
-wins, so the outcome does not depend on the order the page happened to
-mention them in.
+hours adjustment only ever applies to a day the regular schedule already
+opens - a heat protocol does not turn a Sunday into an open day. Opening
+and closing time are handled separately: the side a notice does not name
+keeps its regular time, and where several adjustments land on the same day
+the strictest of each side wins - the latest opening time and the earliest
+closing time. The outcome therefore never depends on the order the page
+happened to mention them in. The `reason` comes from the notice behind the
+closing time, since that is the one a visitor runs into first.
 
 `next_open_close` walks an already-resolved `ResolvedDay` list and returns
 the next opening and closing time as a `datetime` (or `None` outside the
