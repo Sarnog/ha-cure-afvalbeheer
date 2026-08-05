@@ -3,9 +3,10 @@ blueprint:
   description: >
     Stuurt een pushmelding naar de HA Companion App zodra een milieustraat
     van de Cure-integratie voor morgen een afwijkende openingstijd krijgt
-    (hitteprotocol, tijdelijke sluiting of verbouwing). Zo weet je het al
-    een dag van tevoren - zodra Cure de wijziging aankondigt, niet pas op de
-    dag zelf.
+    (hitteprotocol, tijdelijke sluiting, verbouwing, een sluitingsdag rond
+    een feestdag of een vervroegde sluitingstijd). Zo weet je het al een dag
+    van tevoren - zodra Cure de wijziging aankondigt, niet pas op de dag
+    zelf.
 
 
     De melding reageert op de "reden morgen"-sensor van een milieustraat

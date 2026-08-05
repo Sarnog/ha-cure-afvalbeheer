@@ -65,6 +65,15 @@ in plaats van meteen `None` terug te geven. Zie `location_addresses()`'s
 h3-naar-h1-fallback in `parser.py`, en `section_with_heading`/
 `closure_notice_section` in `selectors.py`.
 
+Kop-teksten worden nooit exact vergeleken wanneer Cure er variabele
+onderdelen in zet. `closing_days_blocks` matcht daarom alleen op het woord
+"Sluitingsdagen" en negeert het jaartal dat erachter staat: dat jaartal
+wijzigt elk jaar en loopt in de praktijk soms achter op de werkelijkheid.
+Datzelfde blok heeft geen eigen container - het deelt één prose-`div` met
+de openingstijden - dus de inhoud wordt verzameld door vanaf de kop vooruit
+te lopen tot de volgende kop van hetzelfde of een hoger niveau, in plaats
+van via een `find_parent`.
+
 ---
 
 # Parser
@@ -127,13 +136,26 @@ Entiteiten lezen alleen data uit de coordinator.
 # Notices
 
 `notices.py` haalt tijdelijke afwijkingen (hitteprotocol, sluitingen,
-verbouwingen) uit vrije Nederlandse tekst op de milieustraat-pagina.
+verbouwingen, de sluitingsdagen rond feestdagen) uit vrije Nederlandse
+tekst op de milieustraat-pagina.
 
 Bevat geen BeautifulSoup/HTML-code en geen Home Assistant-imports - het
 neemt alleen platte tekst aan en geeft een `Notice` terug (of `None` als de
 tekst geen herkend patroon matcht). `parser.py` is de enige aanroeper: die
 selecteert de relevante kop-/inhoudstekst via `selectors.py` en geeft die
 door aan `notices.py`.
+
+De sluitingsdagen zijn volledig datum-gedreven: `parse_closing_days` leest
+elke regel los en levert alleen iets op als daar een datum in staat, zodat
+de omringende huisregels in hetzelfde blok vanzelf genegeerd worden. Voor de
+jaartal-bepaling geldt een vaste volgorde - het jaartal in de regel zelf,
+anders dat uit de kop, anders de eerstvolgende keer dat die datum zich
+voordoet. Die
+volgorde is bewust zo: een verouderd jaartal uit de kop levert een datum in
+het verleden op, en die wordt simpelweg nooit toegepast. Regels die geen
+sluiting maar een vervroegde sluitingstijd aankondigen ("geopend tot 16:00
+uur") worden een `Notice` zonder `opens`, zodat `schedule.py` de reguliere
+openingstijd laat staan.
 
 ---
 
@@ -145,7 +167,18 @@ door aan `notices.py`.
 `resolve_day`/`resolve_upcoming` passen daarnaast elke `Notice` toe die bij
 die datum en locatie hoort, en leveren een `ResolvedDay` met een
 `reason`-veld op zodat entiteiten kunnen laten zien *waarom* een dag afwijkt
-van het reguliere rooster. `next_open_close` loopt over een al opgeloste
+van het reguliere rooster.
+
+Daarbij gelden drie regels. Een sluiting wint altijd van een
+tijden-aanpassing. Een tijden-aanpassing verkort alleen een dag die
+volgens het reguliere rooster al open is - een hitteprotocol maakt van een
+zondag dus geen open dag - en neemt de reguliere tijd over voor de kant die
+de melding zelf niet noemt, omdat Cure meestal alleen de vervroegde
+sluitingstijd vermeldt. Gelden er meerdere tijden-aanpassingen op dezelfde
+dag, dan wint de vroegste sluitingstijd, zodat de uitkomst niet afhangt van
+de volgorde waarin de pagina ze toevallig noemt.
+
+`next_open_close` loopt over een al opgeloste
 `ResolvedDay`-lijst en levert de eerstvolgende open- en sluitingstijd als
 `datetime` op (of `None` buiten het lookahead-venster) - pure functie, geen
 Home Assistant-imports, net als de rest van deze module.
@@ -279,6 +312,14 @@ instead of immediately returning `None`. See `location_addresses()`'s
 h3-to-h1 fallback in `parser.py`, and `section_with_heading`/
 `closure_notice_section` in `selectors.py`.
 
+Heading text is never compared in full where Cure puts a variable part in
+it. `closing_days_blocks` therefore matches on the word "Sluitingsdagen"
+alone and ignores the year behind it: that year changes annually and, in
+practice, sometimes lags behind reality. That same block has no container
+of its own - it shares one prose `div` with the opening hours - so its
+content is collected by walking forward from the heading until the next
+heading of the same or a higher level, rather than through a `find_parent`.
+
 ---
 
 # Parser
@@ -340,12 +381,25 @@ Entities only read data from the coordinator.
 # Notices
 
 `notices.py` extracts temporary deviations (heat protocol, closures,
-renovations) from free Dutch text found on the recycling centre page.
+renovations, the closing days around public holidays) from free Dutch text
+found on the recycling centre page.
 
 Contains no BeautifulSoup/HTML code and no Home Assistant imports - it only
 takes plain strings and returns a `Notice` (or `None` when the text does not
 match a recognised pattern). `parser.py` is the only caller: it selects the
 relevant heading/body text via `selectors.py` and hands it to `notices.py`.
+
+The closing days are entirely date-driven: `parse_closing_days` reads each
+line on its own and yields something only when that line holds a date, so
+the house rules sharing the same block are skipped without any special
+handling. Resolving
+the year follows a fixed order - the year in the line itself, else the one
+from the heading, else the next time that day comes round. That order is
+deliberate: an out-of-date year from the heading produces a date in the
+past, and such a date is simply never applied. A line announcing an earlier
+closing time rather than a closure ("geopend tot 16:00 uur") becomes a
+`Notice` without an `opens`, so `schedule.py` leaves the regular opening
+time in place.
 
 ---
 
@@ -357,6 +411,16 @@ relevant heading/body text via `selectors.py` and hands it to `notices.py`.
 `resolve_day`/`resolve_upcoming` additionally apply any `Notice`s that match
 that date and location, producing a `ResolvedDay` with a `reason` field so
 entities can show *why* a day deviates from the regular schedule.
+
+Three rules govern that. A closure always beats an hours adjustment. An
+hours adjustment only ever narrows a day the regular schedule already
+opens - a heat protocol does not turn a Sunday into an open day - and
+inherits the regular time for whichever side the notice does not mention
+itself, since Cure usually announces only the earlier closing time. Where
+several hours adjustments land on the same day, the earliest closing time
+wins, so the outcome does not depend on the order the page happened to
+mention them in.
+
 `next_open_close` walks an already-resolved `ResolvedDay` list and returns
 the next opening and closing time as a `datetime` (or `None` outside the
 lookahead window) - a pure function, no Home Assistant imports, same as the
