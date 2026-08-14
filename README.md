@@ -65,7 +65,12 @@ er is geen los RSS-abonnement nodig.
   bruikbaar is.
 - **Tijdelijke afwijkingen** — hitteprotocol, tijdelijke sluitingen en
   verbouwingen worden uit dezelfde pagina geparst en passen de status en
-  openingstijden automatisch aan, met een reden erbij.
+  openingstijden automatisch aan, met een reden erbij. Cure schrijft zo'n
+  aankondiging elke keer anders op, dus de integratie leest de gangbare
+  schrijfwijzen naast elkaar: "van 13 t/m 15 augustus" net zo goed als "tot
+  en met donderdag 16 juli", en "08.00 - 14.00" net zo goed als "08:00 tot
+  14:00". Een hitteprotocol geldt alleen op de dagen die het noemt, dus een
+  banner die blijft staan nadat de hitte voorbij is verandert niets meer.
 - **Feestdagen en sluitingsdagen** — de lijst met sluitingsdagen op de
   gemeentepagina wordt meegenomen, inclusief de dagen met afwijkende
   openingstijden (Kerstavond, Oudejaarsavond). Elke combinatie werkt: alleen
@@ -76,10 +81,16 @@ er is geen los RSS-abonnement nodig.
   integratie leest elke datum uit de regels zelf en gebruikt het jaartal in het
   kopje hooguit als hint. Staat een regel in een onbekende schrijfwijze, dan
   wordt die overgeslagen in plaats van verkeerd geïnterpreteerd.
+- **Status volgt de klok** — de sensoren rekenen elke minuut opnieuw, dus ze
+  springen op de openings- en sluitingstijd zelf om en niet pas bij de
+  volgende keer dat de website opgehaald wordt.
 - **Robuust bij site-wijzigingen** — bij een plotseling lege parse-uitkomst
   houdt de integratie de laatst bekende goede gegevens aan en toont een
   zichtbare reparatie-melding (**Instellingen → Systeem → Reparaties**), zodat
-  je weet dat de data mogelijk verouderd is.
+  je weet dat de data mogelijk verouderd is. Dat geldt zowel voor de
+  milieustraten zelf als voor de openingstijden: verdwijnen die uit de
+  pagina, dan blijven de laatst bekende tijden staan in plaats van dat alles
+  stilzwijgend op "gesloten" springt.
 - **Diagnostics** — een downloadbare dump van de config entry en de actuele
   coordinator-data, handig bij bugrapporten.
 - **Lokaal merklogo** — geserveerd via de eigen `brand/`-map (Home Assistant
@@ -459,7 +470,12 @@ separate RSS subscription is needed.
   you can warn a day ahead and the next status change is directly usable.
 - **Temporary deviations** — heat protocol, temporary closures and renovations
   are parsed from the same page and automatically adjust the status and opening
-  hours, with a reason attached.
+  hours, with a reason attached. Cure words such an announcement differently
+  every time, so the integration reads the spellings in common use side by
+  side: "van 13 t/m 15 augustus" as readily as "tot en met donderdag 16 juli",
+  and "08.00 - 14.00" as readily as "08:00 tot 14:00". A heat protocol applies
+  only on the days it names, so a banner left standing once the heat has passed
+  changes nothing.
 - **Public holidays and closing days** — the list of closing days on the
   municipality page is picked up as well, including the days with adjusted
   hours (Christmas Eve, New Year's Eve). Every combination works: a different
@@ -470,10 +486,15 @@ separate RSS subscription is needed.
   integration reads every date from the entries themselves and treats the year
   in the heading as no more than a hint. An entry in an unfamiliar wording is
   skipped rather than misread.
+- **Status follows the clock** — the sensors recompute every minute, so they
+  flip at the opening and closing time itself rather than at the next time the
+  website is fetched.
 - **Robust against site changes** — on a suddenly empty parse result the
   integration keeps the last known good data and shows a visible repair
   notification (**Settings → System → Repairs**), so you know the data may be
-  stale.
+  stale. This covers both the recycling centres themselves and the opening
+  hours: should those disappear from the page, the last known times stay in
+  place instead of everything silently flipping to "closed".
 - **Diagnostics** — a downloadable dump of the config entry and the current
   coordinator data, handy for bug reports.
 - **Local brand logo** — served via the integration's own `brand/` folder
