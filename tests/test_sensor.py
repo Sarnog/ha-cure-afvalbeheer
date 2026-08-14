@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 from freezegun import freeze_time
 
+from custom_components.cure_afvalbeheer import sensor as sensor_module
 from custom_components.cure_afvalbeheer.models import (
     CureData,
     Location,
@@ -391,3 +392,37 @@ def test_next_transition_sensor_unique_id_and_name():
 
     assert sensor.unique_id == "test_entry_milieustraat_acht_volgende_close"
     assert sensor.name == "Milieustraat Acht volgende gesloten"
+
+
+async def test_entities_recompute_on_every_minute(monkeypatch):
+    """The coordinator fetches hourly; "open right now" cannot wait that long."""
+
+    registered: list[tuple] = []
+
+    def _fake_track(hass, action, **kwargs):
+        registered.append((action, kwargs))
+
+        return lambda: None
+
+    monkeypatch.setattr(sensor_module, "async_track_time_change", _fake_track)
+
+    for sensor in (
+        _build_sensor(),
+        _build_reason_sensor(0, "vandaag"),
+        _build_next_transition_sensor("open", "volgende open"),
+    ):
+        registered.clear()
+
+        await sensor.async_added_to_hass()
+
+        assert len(registered) == 1
+
+        action, kwargs = registered[0]
+
+        assert kwargs == {"second": 0}
+
+        sensor.async_write_ha_state = MagicMock()
+
+        action(datetime(2026, 7, 20, 8, 30))
+
+        sensor.async_write_ha_state.assert_called_once()

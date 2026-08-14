@@ -9,6 +9,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
@@ -153,6 +154,30 @@ class _CureLocationEntity(CoordinatorEntity[CureDataUpdateCoordinator]):
         super().__init__(coordinator)
 
         self._location_name = location_name
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the clock as well as the coordinator.
+
+        Every value here answers a question about *now*: whether the
+        location is open at this minute, what today's reason is, when it
+        next opens. The coordinator only fires when it has fetched the
+        page again - once an hour by default - so without a tick of its
+        own an entity would still report "gesloten" well after opening
+        time. Recomputing costs nothing (no I/O, no network), and Home
+        Assistant records no history for a value that has not changed.
+        """
+
+        await super().async_added_to_hass()
+
+        self.async_on_remove(
+            async_track_time_change(self.hass, self._handle_clock_tick, second=0)
+        )
+
+    @callback
+    def _handle_clock_tick(self, now: datetime) -> None:
+        """Rewrite the state at the start of every minute."""
+
+        self.async_write_ha_state()
 
     @property
     def _location(self) -> Location | None:
