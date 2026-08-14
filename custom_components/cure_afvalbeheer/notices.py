@@ -101,6 +101,17 @@ _SINGLE_DATE = re.compile(
 
 _TODAY_WORDING = re.compile(r"\bvandaag\b", re.IGNORECASE)
 
+# A period written as two dates without years, the way a heading names the
+# season it applies to ("Openingstijden winter (1 oktober t/m 31 maart)").
+# Both months are spelled out here: without them this is not a season but
+# a couple of numbers.
+_MONTH_DAY_RANGE = re.compile(
+    rf"(?<!\d)(?P<start_day>\d{{1,2}})\s+(?P<start_month>{_MONTH_PATTERN})\b"
+    rf"\s*(?:tot en met|t/m|tot|[-–—])\s*"
+    rf"(?<!\d)(?P<end_day>\d{{1,2}})\s+(?P<end_month>{_MONTH_PATTERN})\b",
+    re.IGNORECASE,
+)
+
 # How an active notice announces itself, the punctuation behind it being
 # Cure's to vary ("Let op!", "Let op:", "Let op,").
 _ATTENTION_WORDING = re.compile(r"^\s*let\s*op\b", re.IGNORECASE)
@@ -187,8 +198,13 @@ _OPEN_UNTIL = re.compile(
     re.IGNORECASE,
 )
 
+# "sluiten ... om 15:00". Cure puts anything between the two - who is
+# closing, on what date - so a good few words are allowed to sit there,
+# but none of them may be a word for opening: in "sluiten niet, wij openen
+# om 09:00" that time is an opening time. Only whole words count, so a
+# sentence boundary ends the search either way.
 _CLOSES_AT = re.compile(
-    r"\bsluit(?:en)?(?:\s+\w+){0,4}?\s+om\s+"
+    r"\bsluit(?:en)?(?:\s+(?!open\w*\b|geopend\b)\w+){0,8}?\s+om\s+"
     r"(?P<hour>\d{1,2})(?:[:.](?P<minute>\d{2}))?(?!\d)",
     re.IGNORECASE,
 )
@@ -207,6 +223,26 @@ _OPEN_WORDING = re.compile(r"\b(?:geopend|open|opent|openen|opengaan)\b", re.IGN
 
 _CLOSED_WORDING = re.compile(r"\b(?:gesloten|dicht|sluit\w*)\b", re.IGNORECASE)
 
+# Words for the location being shut, as opposed to a time it shuts at:
+# "gesloten" describes the state it is in, "sluiten om 15:00" a time it
+# closes at - and the second of those is an hours adjustment, not a
+# closure.
+_CLOSED_STATE = re.compile(r"\b(?:gesloten|dicht)\b", re.IGNORECASE)
+
+# The causes Cure has named so far, each with the reason it maps to. The
+# first match wins, so the more specific causes come first.
+_REASON_WORDING: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("verbouw",), "verbouwing"),
+    (("hitte",), "hitteprotocol"),
+    (
+        ("vorst", "gladheid", "ijzel", "sneeuw", "storm", "noodweer", "winterweer"),
+        "weersomstandigheden",
+    ),
+    (("storing", "stroomuitval"), "storing"),
+    (("werkzaamheden", "onderhoud", "asfalt"), "werkzaamheden"),
+    (("staking",), "staking"),
+)
+
 
 def parse_time_range(text: str) -> tuple[str, str] | None:
     """Extract an HH:MM-HH:MM time range from free text."""
@@ -223,6 +259,37 @@ def parse_time_range(text: str) -> tuple[str, str] | None:
         return None
 
     return opens, closes
+
+
+def season_covers(text: str, day: date) -> bool | None:
+    """Return whether a season named in text is the one day falls in.
+
+    Cure could well split its opening hours into a summer and a winter
+    set, naming the months each applies to in the heading. Such a period
+    carries no year and may run through new year ("1 oktober t/m 31
+    maart"), so only day and month are compared.
+
+    Returns None when the text names no such period at all, which is a
+    different answer from "no": the caller can tell "this is the wrong
+    season" apart from "this heading says nothing about seasons".
+    """
+
+    match = _MONTH_DAY_RANGE.search(text)
+
+    if match is None:
+        return None
+
+    start = (_MONTHS[match.group("start_month").lower()], int(match.group("start_day")))
+    end = (_MONTHS[match.group("end_month").lower()], int(match.group("end_day")))
+
+    current = (day.month, day.day)
+
+    if start <= end:
+        return start <= current <= end
+
+    # A period running through new year: December is as much part of it as
+    # January is.
+    return current >= start or current <= end
 
 
 def parse_numeric_date(text: str) -> date | None:
@@ -855,31 +922,68 @@ def _is_plausible_heat_protocol(
     return timedelta(0) <= (ends - start) <= timedelta(days=_MAX_HEAT_PROTOCOL_DAYS)
 
 
+def _attention_reason(text: str, *, closed: bool) -> str:
+    """Return why a "Let op" notice deviates, as far as the text says.
+
+    Cure names a cause in words rather than in a field, and reaches for a
+    new one whenever a new kind of disruption comes along. Recognising the
+    causes seen so far keeps the reason sensor meaningful; anything else
+    falls back to a plain statement of what happens, which stays true even
+    when the cause is one we have never seen.
+    """
+
+    lowered = text.lower()
+
+    for words, reason in _REASON_WORDING:
+        if any(word in lowered for word in words):
+            return reason
+
+    return "sluiting" if closed else "aangepaste openingstijden"
+
+
 def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | None:
-    """Parse a municipality-specific closure/renovation notice, if present.
+    """Parse a municipality-specific "Let op" notice, if present.
 
     The heading has to open with "Let op", whatever punctuation Cure puts
     behind it. What the body then says about dates is read in three ways,
     in descending order of how definite it is: the date behind a "Datum
-    sluiting" label, a list of dated entries, or a period the closure runs
+    sluiting" label, a list of dated entries, or a period the notice runs
     for. A body naming none of those yields nothing at all.
+
+    Such a notice need not announce a closure. Frost, a storm or anything
+    else can shorten a day rather than cancel it, so a body naming opening
+    or closing times yields an hours adjustment - the same way a line in
+    the closing days list does. A body saying the location is shut
+    ("gesloten", "dicht") is taken at its word regardless: those words
+    describe the state it is in, where "sluiten om 15:00" describes a time
+    it closes at.
     """
 
     if not _ATTENTION_WORDING.match(heading):
         return None
 
-    combined_text = (heading + body_text).lower()
-    reason = "verbouwing" if "verbouw" in combined_text else "werkzaamheden"
+    combined_text = f"{heading} {body_text}"
 
     explicit_date = parse_explicit_closure_date(body_text, today)
 
     if explicit_date is not None:
+        # "Datum sluiting" states a closure in so many words. Any times
+        # the body mentions belong to the alternative location it points
+        # visitors to, so they are not read as this one's hours.
         return Notice(
-            reason=reason,
+            reason=_attention_reason(combined_text, closed=True),
             title=heading,
             closed=True,
             starts=explicit_date if explicit_date > today else None,
         )
+
+    opens, closes = parse_adjusted_hours(body_text)
+
+    adjusted = (opens is not None or closes is not None) and not _CLOSED_STATE.search(
+        combined_text
+    )
+
+    reason = _attention_reason(combined_text, closed=not adjusted)
 
     dated_list = parse_dated_list(body_text, today)
 
@@ -887,7 +991,9 @@ def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | 
         return Notice(
             reason=reason,
             title=heading,
-            closed=True,
+            closed=not adjusted,
+            opens=opens if adjusted else None,
+            closes=closes if adjusted else None,
             dates=dated_list,
         )
 
@@ -897,7 +1003,9 @@ def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | 
         return Notice(
             reason=reason,
             title=heading,
-            closed=True,
+            closed=not adjusted,
+            opens=opens if adjusted else None,
+            closes=closes if adjusted else None,
             starts=starts,
             ends=ends,
         )

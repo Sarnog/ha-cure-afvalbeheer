@@ -12,6 +12,7 @@ from custom_components.cure_afvalbeheer.notices import (
     parse_relative_date_range,
     parse_relative_end_date,
     parse_time_range,
+    season_covers,
 )
 
 # Real text captured live from cure-afvalbeheer.nl on 2026-07-17.
@@ -742,3 +743,134 @@ def test_parse_heat_protocol_notice_ignores_vandaag_in_archived_text():
 
     assert parse_heat_protocol_notice(text, date(2026, 8, 14)) is not None
     assert parse_heat_protocol_notice(text, date(2026, 8, 14), current=False) is None
+
+
+# --- A "Let op" notice that adjusts hours instead of cancelling the day ---
+
+
+_FROST_HEADING = "Let op! Vorst op de milieustraat"
+_FROST_BODY = (
+    "Vanwege vorst en gladheid zijn de milieustraten op dinsdag 12 januari "
+    "2027 pas geopend van 10:00 tot 15:00 uur."
+)
+
+
+def test_parse_closure_notice_reads_adjusted_hours_instead_of_a_closure():
+    """Frost can shorten a day rather than cancel it."""
+
+    notice = parse_closure_notice(_FROST_HEADING, _FROST_BODY, date(2027, 1, 10))
+
+    assert notice is not None
+    assert notice.closed is False
+    assert notice.opens == "10:00"
+    assert notice.closes == "15:00"
+    assert notice.reason == "weersomstandigheden"
+    assert notice.dates == [date(2027, 1, 12)]
+
+
+def test_parse_closure_notice_reads_an_early_closing_time():
+    notice = parse_closure_notice(
+        "Let op! Storm",
+        "Vanwege de storm sluiten wij op woensdag 13 januari 2027 om 15:00 uur.",
+        date(2027, 1, 10),
+    )
+
+    assert notice is not None
+    assert notice.closed is False
+    assert notice.closes == "15:00"
+    assert notice.opens is None
+
+
+def test_parse_closure_notice_takes_gesloten_at_its_word():
+    """ "Gesloten" describes the state; "sluiten om 15:00" a closing time."""
+
+    notice = parse_closure_notice(
+        "Let op! Gladheid",
+        "Op dinsdag 12 januari 2027 zijn de milieustraten gesloten. Normaal "
+        "zijn wij geopend van 08:30 tot 17:00 uur.",
+        date(2027, 1, 10),
+    )
+
+    assert notice is not None
+    assert notice.closed is True
+    assert notice.opens is None
+    assert notice.closes is None
+
+
+def test_parse_closure_notice_keeps_a_permanent_closure_a_closure():
+    """A "Datum sluiting" body names the alternative location's hours."""
+
+    notice = parse_closure_notice(
+        "Let op! Lodewijkstraat wordt verbouwd",
+        "Kom naar onze milieustraat in Acht, geopend van 08:30 tot 17:00 uur. "
+        "Datum sluiting: 30-11-2027",
+        date(2027, 1, 10),
+    )
+
+    assert notice is not None
+    assert notice.closed is True
+    assert notice.opens is None
+    assert notice.reason == "verbouwing"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Let op! Lodewijkstraat wordt verbouwd", "verbouwing"),
+        ("Let op! Vorst en gladheid", "weersomstandigheden"),
+        ("Let op! Door de storm", "weersomstandigheden"),
+        ("Let op! Stroomstoring", "storing"),
+        ("Let op! Werkzaamheden aan de weg", "werkzaamheden"),
+        ("Let op! Onderhoud aan de weegbrug", "werkzaamheden"),
+        ("Let op! Er wordt gestaakt", "sluiting"),
+    ],
+)
+def test_parse_closure_notice_names_the_cause_it_can_read(text, expected):
+    notice = parse_closure_notice(
+        text, "Op dinsdag 12 januari 2027 gesloten.", date(2027, 1, 10)
+    )
+
+    assert notice is not None
+    assert notice.reason == expected
+
+
+def test_parse_closure_notice_falls_back_to_a_plain_reason():
+    """An unknown cause still gets a reason that is true."""
+
+    notice = parse_closure_notice(
+        "Let op! Iets onverwachts",
+        "Op dinsdag 12 januari 2027 zijn wij geopend van 10:00 tot 12:00 uur.",
+        date(2027, 1, 10),
+    )
+
+    assert notice is not None
+    assert notice.reason == "aangepaste openingstijden"
+
+
+@pytest.mark.parametrize(
+    ("day", "expected"),
+    [
+        (date(2026, 8, 14), False),
+        (date(2026, 1, 14), True),
+        (date(2026, 10, 1), True),
+        (date(2026, 3, 31), True),
+        (date(2026, 4, 1), False),
+    ],
+)
+def test_season_covers_a_period_running_through_new_year(day, expected):
+    assert season_covers("Openingstijden winter (1 oktober t/m 31 maart)", day) is (
+        expected
+    )
+
+
+def test_season_covers_a_period_inside_one_year():
+    heading = "Openingstijden zomer (1 april t/m 30 september)"
+
+    assert season_covers(heading, date(2026, 8, 14)) is True
+    assert season_covers(heading, date(2026, 1, 14)) is False
+
+
+def test_season_covers_returns_none_without_a_period():
+    """None is not "no": the heading says nothing about seasons at all."""
+
+    assert season_covers("Openingstijden", date(2026, 8, 14)) is None
