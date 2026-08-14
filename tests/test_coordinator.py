@@ -4,9 +4,14 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import UpdateFailed
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.cure_afvalbeheer.const import DOMAIN, ISSUE_NO_LOCATIONS_FOUND
+from custom_components.cure_afvalbeheer.const import (
+    DOMAIN,
+    ISSUE_NO_LOCATIONS_FOUND,
+    ISSUE_NO_OPENING_HOURS_FOUND,
+)
 from custom_components.cure_afvalbeheer.coordinator import (
     CureDataUpdateCoordinator,
 )
@@ -36,7 +41,8 @@ async def test_async_update_data(hass) -> None:
 
     result = await coordinator._async_update_data()
 
-    api.fetch_milieustraat.assert_awaited_once_with("eindhoven")
+    api.fetch_milieustraat.assert_awaited_once()
+    assert api.fetch_milieustraat.await_args.args[0] == "eindhoven"
     assert result == CureData(locations=[])
     assert coordinator.update_interval == timedelta(minutes=60)
 
@@ -259,3 +265,115 @@ async def test_recovers_notice_location_hint_using_stale_locations(hass) -> None
 
     assert coordinator.data.locations == [acht, lodewijkstraat]
     assert coordinator.data.notices[0].location_hint == "Milieustraat Lodewijkstraat"
+
+
+def _location_with_hours(name: str = "Milieustraat Acht") -> Location:
+    """Return a location with one day of regular opening hours."""
+
+    return Location(
+        name=name,
+        address="Achtseweg Noord 41",
+        hours=[
+            OpeningHours(
+                day=Weekday.MONDAY, opens="08:30", closes="17:00", closed=False
+            )
+        ],
+    )
+
+
+async def _coordinator_with(hass, api, entry) -> CureDataUpdateCoordinator:
+    """Return a coordinator wired to the given api mock."""
+
+    return CureDataUpdateCoordinator(
+        hass=hass,
+        api=api,
+        config_entry=entry,
+        municipality="eindhoven",
+        update_interval_minutes=60,
+    )
+
+
+async def test_keeps_last_known_good_opening_hours(hass) -> None:
+    """Empty hours read as "closed all week", which is the one wrong
+    answer a visitor cannot tell apart from a right one."""
+
+    entry = MockConfigEntry()
+    location = _location_with_hours()
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = CureData(locations=[location])
+
+    coordinator = await _coordinator_with(hass, api, entry)
+
+    await coordinator.async_refresh()
+
+    api.fetch_milieustraat.return_value = CureData(
+        locations=[Location(name=location.name, address=location.address, hours=[])]
+    )
+
+    await coordinator.async_refresh()
+
+    assert coordinator.data.locations[0].hours == location.hours
+
+    issue_registry = ir.async_get(hass)
+    issue_id = f"{ISSUE_NO_OPENING_HOURS_FOUND}_{entry.entry_id}"
+
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
+
+
+async def test_clears_the_opening_hours_issue_once_they_return(hass) -> None:
+    entry = MockConfigEntry()
+    location = _location_with_hours()
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = CureData(
+        locations=[Location(name=location.name, address=location.address, hours=[])]
+    )
+
+    coordinator = await _coordinator_with(hass, api, entry)
+
+    await coordinator.async_refresh()
+
+    api.fetch_milieustraat.return_value = CureData(locations=[location])
+
+    await coordinator.async_refresh()
+
+    issue_registry = ir.async_get(hass)
+    issue_id = f"{ISSUE_NO_OPENING_HOURS_FOUND}_{entry.entry_id}"
+
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is None
+
+
+async def test_passes_through_empty_hours_without_anything_better(hass) -> None:
+    """With no earlier good data there is nothing to fall back to."""
+
+    entry = MockConfigEntry()
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = CureData(
+        locations=[Location(name="Milieustraat Acht", address=None, hours=[])]
+    )
+
+    coordinator = await _coordinator_with(hass, api, entry)
+
+    await coordinator.async_refresh()
+
+    assert coordinator.data.locations[0].hours == []
+
+
+async def test_fetches_against_home_assistants_own_date(hass) -> None:
+    """Home Assistant's time zone need not match the machine's."""
+
+    hass.config.time_zone = "Pacific/Kiritimati"
+    dt_util.set_default_time_zone(dt_util.get_time_zone("Pacific/Kiritimati"))
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = CureData(locations=[])
+
+    coordinator = await _coordinator_with(hass, api, MockConfigEntry())
+
+    await coordinator._async_update_data()
+
+    assert api.fetch_milieustraat.await_args.args[1] == dt_util.now().date()
+
+    dt_util.set_default_time_zone(dt_util.UTC)

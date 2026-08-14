@@ -13,6 +13,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
     ISSUE_NO_LOCATIONS_FOUND,
+    ISSUE_NO_OPENING_HOURS_FOUND,
 )
 from .coordinator import CureDataUpdateCoordinator
 
@@ -65,7 +66,8 @@ async def async_unload_entry(
 ) -> bool:
     """Unload Cure Afvalbeheer."""
 
-    ir.async_delete_issue(hass, DOMAIN, f"{ISSUE_NO_LOCATIONS_FOUND}_{entry.entry_id}")
+    for issue in (ISSUE_NO_LOCATIONS_FOUND, ISSUE_NO_OPENING_HOURS_FOUND):
+        ir.async_delete_issue(hass, DOMAIN, f"{issue}_{entry.entry_id}")
 
     return await hass.config_entries.async_unload_platforms(
         entry,

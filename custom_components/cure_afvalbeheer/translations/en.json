@@ -49,6 +49,10 @@
     "no_locations_found": {
       "title": "No recycling centres found anymore",
       "description": "The integration could no longer find a single recycling centre on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. Please report this via the integration's issue tracker and attach the diagnostics download."
+    },
+    "no_opening_hours_found": {
+      "title": "No opening hours found anymore",
+      "description": "The integration could no longer find any opening hours on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. While that lasts the integration keeps the last known opening hours, so the times shown may be out of date. Please report this via the integration's issue tracker and attach the diagnostics download."
     }
   }
 }

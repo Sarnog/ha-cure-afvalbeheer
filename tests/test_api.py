@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from aiohttp import ClientResponseError, ClientSession
+from aiohttp import ClientConnectionError, ClientResponseError, ClientSession
 from yarl import URL
 
 from custom_components.cure_afvalbeheer.api import (
@@ -63,10 +63,31 @@ async def test_fetch_html_raises_http_error() -> None:
 
     client = CureApiClient(session)
 
-    with pytest.raises(
-        CureApiError,
-        match="Failed to fetch HTML from Cure website",
-    ):
+    with pytest.raises(CureApiError, match="Failed to fetch"):
+        await client.fetch_html("/")
+
+
+@pytest.mark.anyio
+async def test_fetch_html_raises_on_a_connection_failure() -> None:
+    """Any failure to retrieve the page is one error type, not a traceback."""
+
+    session = AsyncMock(spec=ClientSession)
+    session.get.side_effect = ClientConnectionError("nope")
+
+    client = CureApiClient(session)
+
+    with pytest.raises(CureApiError, match="Failed to fetch"):
+        await client.fetch_html("/")
+
+
+@pytest.mark.anyio
+async def test_fetch_html_raises_on_a_timeout() -> None:
+    session = AsyncMock(spec=ClientSession)
+    session.get.side_effect = TimeoutError
+
+    client = CureApiClient(session)
+
+    with pytest.raises(CureApiError, match="Failed to fetch"):
         await client.fetch_html("/")
 
 
