@@ -127,8 +127,7 @@ Elke milieustraat krijgt vijf sensoren:
   attributen.
 - **`sensor.<device>_<milieustraat>_reden_vandaag`** en
   **`..._reden_morgen`** — leeg (`""`) als er geen afwijking is, anders de
-  reden (`hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag`,
-  `aangepaste openingstijden`).
+  reden. Welke redenen er zijn, staat in [Redenen](#redenen).
 - **`sensor.<device>_<milieustraat>_volgende_open`** en
   **`..._volgende_close`** — timestamp van de eerstvolgende keer dat de
   milieustraat open respectievelijk dicht gaat, binnen het ingestelde
@@ -349,8 +348,29 @@ manieren, van simpel naar flexibel:
    `{{ trigger.from_state.state == '' and trigger.to_state.state != '' }}` —
    en stuur in de actie een melding met `{{ trigger.to_state.state }}` als
    reden. De sensorwaarde is leeg (`""`) zolang er geen afwijking is, en
-   anders `hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag` of
-   `aangepaste openingstijden`.
+   anders een van de redenen uit [Redenen](#redenen).
+
+### Redenen
+
+De reden-sensoren geven aan *waarom* een dag afwijkt van het reguliere
+rooster. Cure noemt de aanleiding in gewone zinnen, dus de integratie leidt
+er een van deze waarden uit af:
+
+| Reden | Wanneer |
+| --- | --- |
+| `hitteprotocol` | Aangepaste tijden vanwege de hitte. |
+| `weersomstandigheden` | Vorst, gladheid, ijzel, sneeuw, storm of noodweer. |
+| `verbouwing` | Een milieustraat die verbouwd wordt. |
+| `werkzaamheden` | Werkzaamheden, onderhoud of wegwerkzaamheden. |
+| `storing` | Een storing of stroomuitval. |
+| `sluitingsdag` | Een dag uit de sluitingsdagenlijst (feestdagen). |
+| `aangepaste openingstijden` | Andere tijden, zonder herkenbare aanleiding. |
+| `sluiting` | Dicht, zonder herkenbare aanleiding. |
+
+Een melding die aangepaste tijden aankondigt houdt de milieustraat open: de
+reden-sensor vertelt dan waarom de tijden anders zijn, terwijl de
+status-sensor gewoon `open` blijft binnen die tijden. Alleen een melding die
+zegt dat de milieustraat *gesloten* of *dicht* is, sluit de dag helemaal.
 
 ### Voorbeeld: navigatie-knop
 
@@ -532,9 +552,8 @@ Each recycling centre gets five sensors:
   attributes.
 - **`sensor.<device>_<milieustraat>_reden_vandaag`** and
   **`..._reden_morgen`** — empty (`""`) if there is no deviation, otherwise
-  the reason (`hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag`,
-  `aangepaste openingstijden` — these values are always Dutch, since that is
-  what the integration itself produces).
+  the reason. See [Reasons](#reasons) for the full list. These values are
+  always Dutch, since that is what the integration itself produces.
 - **`sensor.<device>_<milieustraat>_volgende_open`** and
   **`..._volgende_close`** — timestamp of the next time the recycling
   centre opens and closes respectively, within the configured forecast
@@ -752,8 +771,29 @@ the day itself arrives. There are two ways, from simple to flexible:
    `{{ trigger.from_state.state == '' and trigger.to_state.state != '' }}` —
    then send a notification with `{{ trigger.to_state.state }}` as the
    reason. The sensor value is empty (`""`) while there is no deviation, and
-   otherwise `hitteprotocol`, `verbouwing`, `werkzaamheden`, `sluitingsdag` or
-   `aangepaste openingstijden`.
+   otherwise one of the reasons listed under [Reasons](#reasons).
+
+### Reasons
+
+The reason sensors say *why* a day deviates from the regular schedule. Cure
+names the cause in ordinary sentences, so the integration derives one of
+these values from it:
+
+| Reason | When |
+| --- | --- |
+| `hitteprotocol` | Adjusted hours because of the heat. |
+| `weersomstandigheden` | Frost, black ice, snow, storm or severe weather. |
+| `verbouwing` | A recycling centre being rebuilt. |
+| `werkzaamheden` | Works, maintenance or roadworks. |
+| `storing` | A fault or power failure. |
+| `sluitingsdag` | A day from the closing days list (public holidays). |
+| `aangepaste openingstijden` | Different hours, with no recognisable cause. |
+| `sluiting` | Shut, with no recognisable cause. |
+
+A notice announcing adjusted hours keeps the location open: the reason
+sensor then tells you why the hours differ, while the status sensor stays
+`open` within those hours. Only a notice saying the location is *gesloten*
+or *dicht* closes the day entirely.
 
 ### Example: navigation button
 

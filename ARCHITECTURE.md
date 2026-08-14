@@ -83,12 +83,14 @@ te lopen tot de volgende kop van hetzelfde of een hoger niveau, in plaats
 van via een `find_parent`.
 
 Een kop wordt gezocht op tekst, niet op exacte gelijkheid:
-`heading_with_text` neemt eerst de kop die exact klopt, dan een kop die
-ermee begint, dan een kop die hem bevat - zodat "Openingstijden
-milieustraat" gevonden wordt zonder dat "Afwijkende openingstijden" hoger
-op de pagina het van de echte kop wint. `lines_under_heading` levert
-vervolgens de regels van dat kop-blok, tot de volgende kop van hetzelfde
-of een hoger niveau. Die grens is er niet voor de sier: de openingstijden
+`blocks_under_heading` neemt eerst de koppen die exact kloppen, anders die
+ermee beginnen, anders die hem bevatten - zodat "Openingstijden
+milieustraat" gevonden wordt zonder dat "Afwijkende openingstijden" zich
+bij de echte koppen voegt. Elk blok is zijn kop plus de regels die erbij
+horen, tot de volgende kop van hetzelfde of een hoger niveau. Er worden
+altijd álle blokken van die soort teruggegeven, want een pagina kan er
+meer dan één hebben - een zomer- en een winterrooster naast elkaar - en
+daaruit kiezen op volgorde van de pagina is willekeurig kiezen. Die grens is er niet voor de sier: de openingstijden
 en de sluitingsdagen delen één container, en zonder die grens zou een
 gedateerde regel uit de sluitingsdagen ("Zaterdag 26 december: 10:00 tot
 14:00") als de reguliere zaterdag geboekt worden.
@@ -217,6 +219,13 @@ Een regel die alsnog niet te lezen blijkt, wordt overgeslagen met een
 waarschuwing in het log in plaats van de hele update mee te nemen: de
 overige zes dagen zijn nog prima bruikbaar.
 
+Levert de pagina meer dan één openingstijden-blok op, dan beslist de kop:
+`season_covers` leest er een periode zonder jaartal uit ("1 oktober t/m 31
+maart", die over de jaarwisseling heen loopt) en het blok dat vandaag omvat
+wint. Zonder die keuze zou de volgorde op de pagina beslissen, en dat
+betekent wintertijden in augustus. Past er geen enkel blok, of meer dan
+één, dan wordt het eerste gebruikt en zegt het log dat erbij.
+
 ---
 
 # Times
@@ -299,6 +308,21 @@ april 2026"), afgekort ("6 apr 2026") en in cijfers ("06-04-2026",
 "6/4/2026"). Bij een datum in cijfers moet het jaartal voluit staan - met
 twee cijfers zou een huisnummer of een tijd te makkelijk voor een datum
 doorgaan.
+
+Een "Let op"-melding hoeft geen sluiting te zijn. Vorst, storm of wat dan
+ook kan een dag net zo goed inkorten als schrappen, dus een melding die
+tijden noemt levert een tijden-aanpassing op - net zoals een regel in de
+sluitingsdagenlijst dat doet. Zegt de tekst dat de milieustraat "gesloten"
+of "dicht" is, dan wint die sluiting altijd: die woorden beschrijven de
+toestand van de locatie, terwijl "sluiten om 15:00" een tijdstip beschrijft
+waarop ze dichtgaat.
+
+De aanleiding komt uit de tekst zelf. Cure noemt die in gewone woorden en
+verzint er een nieuwe bij zodra er een nieuw soort verstoring is, dus
+herkende woorden leveren een bruikbare reden op (`weersomstandigheden`,
+`storing`, `verbouwing`, `werkzaamheden`) en al het overige valt terug op
+een reden die hoe dan ook waar is: `sluiting` of `aangepaste
+openingstijden`.
 
 Een sluitingsmelding leest zijn datums op drie manieren, van stelligst naar
 minst stellig: de datum achter een "Datum sluiting"-label (waarbij alleen de
@@ -501,12 +525,14 @@ content is collected by walking forward from the heading until the next
 heading of the same or a higher level, rather than through a `find_parent`.
 
 A heading is looked up by its text rather than by exact equality:
-`heading_with_text` takes the heading that matches exactly, else one that
-starts with the wanted text, else one that merely contains it - so
+`blocks_under_heading` takes the headings that match exactly, else those
+starting with the wanted text, else those merely containing it - so
 "Openingstijden milieustraat" is found without "Afwijkende openingstijden"
-higher up the page beating the real heading to it. `lines_under_heading`
-then returns that heading's own lines, up to the next heading of the same
-or a higher level. That boundary earns its keep: the opening hours and the
+joining the real ones. Each block is its heading plus the lines belonging
+to it, up to the next heading of the same or a higher level. Every block
+of that kind is returned, since a page can carry more than one - a summer
+and a winter schedule side by side - and picking between those by document
+order is picking at random. That boundary earns its keep: the opening hours and the
 closing days share one container, and without it a dated line from the
 closing days ("Zaterdag 26 december: 10:00 tot 14:00") would be filed as
 that Saturday's regular hours.
@@ -633,6 +659,13 @@ A line that turns out to be unreadable after all is skipped with a warning
 in the log rather than taking the whole update with it: the other six days
 are still perfectly usable.
 
+Where the page yields more than one opening hours block, the heading
+decides: `season_covers` reads a year-less period out of it ("1 oktober t/m
+31 maart", which runs through new year) and the block covering today wins.
+Without that choice the order on the page would decide, which means winter
+hours in August. Where no block fits, or more than one does, the first is
+used and the log says so.
+
 ---
 
 # Times
@@ -712,6 +745,19 @@ Dates are read in every spelling in common use: written out ("6 april
 2026"), abbreviated ("6 apr 2026") and in numbers ("06-04-2026",
 "6/4/2026"). A date in numbers has to carry its year in full - with two
 digits a house number or a time would pass for a date too easily.
+
+A "Let op" notice need not be a closure. Frost, a storm or anything else
+can shorten a day as readily as cancel it, so a notice naming times yields
+an hours adjustment - the same way a line in the closing days list does. If
+the text says the location is "gesloten" or "dicht", that closure wins
+regardless: those words describe the state the location is in, where
+"sluiten om 15:00" describes a time it closes at.
+
+The cause comes from the text itself. Cure names it in ordinary words and
+reaches for a new one whenever a new kind of disruption comes along, so
+recognised words give a usable reason (`weersomstandigheden`, `storing`,
+`verbouwing`, `werkzaamheden`) and everything else falls back on a reason
+that is true either way: `sluiting` or `aangepaste openingstijden`.
 
 A closure notice reads its dates in three ways, from most definite to
 least: the date behind a "Datum sluiting" label (where only the text right
