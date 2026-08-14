@@ -19,6 +19,7 @@ from .notices import (
     parse_closing_days,
     parse_closure_notice,
     parse_heat_protocol_notice,
+    season_covers,
 )
 from .parsers import (
     is_opening_hours_line,
@@ -93,7 +94,38 @@ class CureParser:
 
         return selectors.location_name(self._soup)
 
-    def opening_hours_lines(self) -> list[str]:
+    def _hours_block(self, today: date) -> list[str]:
+        """Return the lines of the opening hours block that applies today.
+
+        A page carrying one block is the ordinary case. Should Cure ever
+        split its hours into a summer and a winter set, the heading naming
+        the months that cover today decides; picking one by document order
+        would mean showing winter hours in August. When several blocks
+        apply, or none names a season at all, the first is used and the
+        log says so - a wrong guess about which set is current is worth
+        knowing about.
+        """
+
+        blocks = selectors.blocks_under_heading(self._soup, "Openingstijden")
+
+        if len(blocks) <= 1:
+            return blocks[0][1] if blocks else []
+
+        current = [lines for heading, lines in blocks if season_covers(heading, today)]
+
+        if len(current) == 1:
+            return current[0]
+
+        LOGGER.warning(
+            "Found %d opening hours blocks and could not tell which one "
+            "applies today; using the first: %s",
+            len(blocks),
+            [heading for heading, _ in blocks],
+        )
+
+        return blocks[0][1]
+
+    def opening_hours_lines(self, today: date | None = None) -> list[str]:
         """Return only valid opening hours lines.
 
         Only the lines under the "Openingstijden" heading itself are
@@ -102,16 +134,17 @@ class CureParser:
         would otherwise be filed as that weekday's regular hours.
         """
 
+        if today is None:
+            today = date.today()
+
         return [
-            line
-            for line in selectors.lines_under_heading(self._soup, "Openingstijden")
-            if is_opening_hours_line(line)
+            line for line in self._hours_block(today) if is_opening_hours_line(line)
         ]
 
-    def opening_hours(self) -> list[OpeningHours]:
+    def opening_hours(self, today: date | None = None) -> list[OpeningHours]:
         """Return parsed opening hours."""
 
-        return parse_opening_hours(self.opening_hours_lines())
+        return parse_opening_hours(self.opening_hours_lines(today))
 
     def location_addresses(self) -> list[tuple[str, str]]:
         """Parse the recycling centre addresses.
@@ -153,12 +186,12 @@ class CureParser:
 
         return result
 
-    def parse_locations(self) -> list[Location]:
+    def parse_locations(self, today: date | None = None) -> list[Location]:
         """Parse all recycling centres."""
 
         locations: list[Location] = []
 
-        hours = self.opening_hours()
+        hours = self.opening_hours(today)
 
         for name, address in self.location_addresses():
             locations.append(
@@ -243,7 +276,7 @@ class CureParser:
     def parse(self, today: date | None = None) -> CureData:
         """Parse the complete page."""
 
-        locations = self.parse_locations()
+        locations = self.parse_locations(today)
 
         return CureData(
             locations=locations,

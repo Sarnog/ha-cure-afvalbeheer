@@ -3,6 +3,13 @@ from bs4 import BeautifulSoup
 
 from custom_components.cure_afvalbeheer import selectors
 
+
+def _lines(blocks: list[tuple[str, list[str]]]) -> list[str]:
+    """Return the lines of the first block, or none at all."""
+
+    return blocks[0][1] if blocks else []
+
+
 _SINGULAR_ADDRESS_HTML = """
 <html>
 <body>
@@ -167,7 +174,7 @@ def test_closure_notice_section_falls_back_without_data_block_attribute():
     assert section.find("h2").get_text(strip=True).startswith("Let op!")
 
 
-def test_lines_under_heading_matches_case_insensitively():
+def test_blocks_under_heading_matches_case_insensitively():
     html = """
     <html><body>
     <section>
@@ -179,7 +186,9 @@ def test_lines_under_heading_matches_case_insensitively():
 
     soup = BeautifulSoup(html, "html.parser")
 
-    assert selectors.lines_under_heading(soup, "Openingstijden") == ["Ma 08:30 - 17:00"]
+    assert _lines(selectors.blocks_under_heading(soup, "Openingstijden")) == [
+        "Ma 08:30 - 17:00"
+    ]
 
 
 _CLOSING_DAYS_HTML = """
@@ -301,7 +310,7 @@ def test_closing_days_blocks_returns_nothing_without_the_heading():
     assert selectors.closing_days_blocks(soup) == []
 
 
-def test_lines_under_heading_works_without_a_section_wrapper():
+def test_blocks_under_heading_works_without_a_section_wrapper():
     """If Cure wraps the heading in a <div> instead of <section>, still find it."""
 
     html = """
@@ -315,10 +324,12 @@ def test_lines_under_heading_works_without_a_section_wrapper():
 
     soup = BeautifulSoup(html, "html.parser")
 
-    assert selectors.lines_under_heading(soup, "Openingstijden") == ["Ma 08:30 - 17:00"]
+    assert _lines(selectors.blocks_under_heading(soup, "Openingstijden")) == [
+        "Ma 08:30 - 17:00"
+    ]
 
 
-def test_lines_under_heading_stops_at_the_next_heading():
+def test_blocks_under_heading_stops_at_the_next_heading():
     """The opening hours and the closing days share one container."""
 
     html = """
@@ -334,15 +345,15 @@ def test_lines_under_heading_stops_at_the_next_heading():
 
     soup = BeautifulSoup(html, "html.parser")
 
-    assert selectors.lines_under_heading(soup, "Openingstijden") == [
+    assert _lines(selectors.blocks_under_heading(soup, "Openingstijden")) == [
         "Maandag: 08:30 tot 17:00"
     ]
 
 
-def test_lines_under_heading_returns_empty_without_the_heading():
+def test_blocks_under_heading_returns_empty_without_the_heading():
     soup = BeautifulSoup("<html><body><p>Niets</p></body></html>", "html.parser")
 
-    assert selectors.lines_under_heading(soup, "Openingstijden") == []
+    assert _lines(selectors.blocks_under_heading(soup, "Openingstijden")) == []
 
 
 # --- Layouts and spellings Cure has not used yet, but readily could ---
@@ -364,28 +375,27 @@ _TABLE_HOURS_HTML = """
 """
 
 
-def test_lines_under_heading_reads_rows_and_list_items_too():
+def test_blocks_under_heading_reads_rows_and_list_items_too():
     """Cure can move these lines into a table or a list without rewording."""
 
     soup = BeautifulSoup(_TABLE_HOURS_HTML, "html.parser")
 
-    assert selectors.lines_under_heading(soup, "Openingstijden") == [
+    assert _lines(selectors.blocks_under_heading(soup, "Openingstijden")) == [
         "Maandag 08:30 - 17:00",
         "Zaterdag 10:00 - 16:00",
         "Zon & Feestdagen: Gesloten",
     ]
 
 
-def test_heading_with_text_accepts_added_words():
+def test_blocks_under_heading_accepts_added_words():
     soup = BeautifulSoup(_TABLE_HOURS_HTML, "html.parser")
 
-    heading = selectors.heading_with_text(soup, "Openingstijden")
+    blocks = selectors.blocks_under_heading(soup, "Openingstijden")
 
-    assert heading is not None
-    assert heading.get_text(strip=True) == "Openingstijden milieustraat"
+    assert [heading for heading, _ in blocks] == ["Openingstijden milieustraat"]
 
 
-def test_heading_with_text_prefers_the_exact_heading():
+def test_blocks_under_heading_prefers_the_exact_heading():
     """A near-match higher up the page must not beat the real heading."""
 
     html = """
@@ -395,9 +405,33 @@ def test_heading_with_text_prefers_the_exact_heading():
     </body></html>
     """
 
-    assert selectors.lines_under_heading(
+    blocks = selectors.blocks_under_heading(
         BeautifulSoup(html, "html.parser"), "Openingstijden"
-    ) == ["Maandag: 08:30 tot 17:00"]
+    )
+
+    assert [heading for heading, _ in blocks] == ["Openingstijden"]
+    assert _lines(blocks) == ["Maandag: 08:30 tot 17:00"]
+
+
+def test_blocks_under_heading_returns_every_block_of_its_kind():
+    """Summer and winter hours side by side are two blocks, not one."""
+
+    html = """
+    <html><body>
+    <h2>Openingstijden winter (1 oktober t/m 31 maart)</h2>
+    <p>Maandag: 09:00 tot 16:00</p>
+    <h2>Openingstijden zomer (1 april t/m 30 september)</h2>
+    <p>Maandag: 08:30 tot 17:00</p>
+    </body></html>
+    """
+
+    blocks = selectors.blocks_under_heading(
+        BeautifulSoup(html, "html.parser"), "Openingstijden"
+    )
+
+    assert len(blocks) == 2
+    assert blocks[0][1] == ["Maandag: 09:00 tot 16:00"]
+    assert blocks[1][1] == ["Maandag: 08:30 tot 17:00"]
 
 
 @pytest.mark.parametrize(

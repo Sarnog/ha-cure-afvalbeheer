@@ -56,57 +56,60 @@ def all_headings(soup: BeautifulSoup) -> list[str]:
     return result
 
 
-def heading_with_text(soup: BeautifulSoup, wanted: str) -> Tag | None:
-    """Return the heading carrying the given text, if the page has one.
+def blocks_under_heading(
+    soup: BeautifulSoup, wanted: str
+) -> list[tuple[str, list[str]]]:
+    """Return every block whose heading carries the given text.
 
-    Matches case-insensitively across every heading level. Cure adds words
-    to its headings from time to time ("Openingstijden milieustraat"), so
-    a heading that merely opens with the wanted text, or carries it
-    somewhere inside, counts too. The closest match wins: an exact heading
-    beats one that only starts with it, which in turn beats one that only
-    contains it - otherwise a heading reading "Afwijkende openingstijden"
-    could be picked over the real one purely for standing higher up the
-    page.
+    Each block is its heading's own text plus the lines belonging to it,
+    up to the next heading of the same or a higher level. That boundary is
+    what keeps a list sharing one container with another (Cure puts the
+    opening hours and the closing days in a single prose div) from
+    bleeding into its neighbour.
+
+    Matching is case-insensitive across every heading level. Cure adds
+    words to its headings from time to time ("Openingstijden
+    milieustraat"), so a heading that merely opens with the wanted text,
+    or carries it somewhere inside, counts too - but only the closest kind
+    of match found is returned. Exact headings beat ones that only start
+    with the text, which in turn beat ones that only contain it, so a
+    heading reading "Afwijkende openingstijden" never joins the real ones.
+
+    Every match of that kind is returned rather than only the first: a
+    page could carry a summer and a winter set of hours side by side, and
+    picking one of those by document order would be picking at random.
     """
 
     target = wanted.strip().lower()
 
-    starts_with: Tag | None = None
-    contains: Tag | None = None
+    exact: list[Tag] = []
+    starts_with: list[Tag] = []
+    contains: list[Tag] = []
 
     for heading in headings(soup):
         text = _plain_text(heading).lower()
 
         if text == target:
-            return heading
+            exact.append(heading)
 
-        if starts_with is None and text.startswith(target):
-            starts_with = heading
+        elif text.startswith(target):
+            starts_with.append(heading)
 
-        elif contains is None and target in text:
-            contains = heading
-
-    return starts_with or contains
-
-
-def lines_under_heading(soup: BeautifulSoup, wanted: str) -> list[str]:
-    """Return the lines of text belonging to one heading's own block.
-
-    The block ends where the next heading of the same or a higher level
-    begins, which is what keeps a list sharing one container with another
-    (Cure puts the opening hours and the closing days in a single prose
-    div) from bleeding into its neighbour.
-    """
-
-    heading = heading_with_text(soup, wanted)
-
-    if heading is None:
-        return []
+        elif target in text:
+            contains.append(heading)
 
     return [
-        text
-        for text in (_plain_text(el) for el in _text_elements_after(heading))
-        if text
+        (
+            _plain_text(heading),
+            [
+                text
+                for text in (
+                    _plain_text(element) for element in _text_elements_after(heading)
+                )
+                if text
+            ],
+        )
+        for heading in (exact or starts_with or contains)
     ]
 
 

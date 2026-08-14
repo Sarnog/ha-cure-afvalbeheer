@@ -334,3 +334,42 @@ def test_heat_protocol_notice_does_not_read_vandaag_from_a_news_item():
     )
 
     assert CureParser(html).heat_protocol_notice(date(2026, 10, 1)) is None
+
+
+_SEASONAL_PAGE = """
+<html><body>
+<section><h2>Adres Milieustraat Eindhoven</h2>
+<h3>Milieustraat Acht</h3><p>Achtseweg Noord 41</p></section>
+<section>
+    <h2>Openingstijden winter (1 oktober t/m 31 maart)</h2>
+    <p>Maandag: 09:00 tot 16:00</p>
+    <h2>Openingstijden zomer (1 april t/m 30 september)</h2>
+    <p>Maandag: 08:30 tot 17:00</p>
+</section>
+</body></html>
+"""
+
+
+def test_opening_hours_picks_the_season_that_covers_today():
+    """Two sets side by side must not be picked by document order."""
+
+    parser = CureParser(_SEASONAL_PAGE)
+
+    summer = parser.opening_hours(date(2026, 8, 14))
+    winter = parser.opening_hours(date(2026, 1, 14))
+
+    assert (summer[0].opens, summer[0].closes) == ("08:30", "17:00")
+    assert (winter[0].opens, winter[0].closes) == ("09:00", "16:00")
+
+
+def test_opening_hours_falls_back_to_the_first_block_it_cannot_place(caplog):
+    """Unplaceable blocks still yield hours, and say so in the log."""
+
+    html = _SEASONAL_PAGE.replace(" (1 oktober t/m 31 maart)", "").replace(
+        " (1 april t/m 30 september)", ""
+    )
+
+    hours = CureParser(html).opening_hours(date(2026, 8, 14))
+
+    assert (hours[0].opens, hours[0].closes) == ("09:00", "16:00")
+    assert "could not tell which one applies today" in caplog.text
