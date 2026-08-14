@@ -94,19 +94,17 @@ class CureParser:
         return selectors.location_name(self._soup)
 
     def opening_hours_lines(self) -> list[str]:
-        """Return only valid opening hours lines."""
+        """Return only valid opening hours lines.
 
-        section = selectors.section_with_heading(
-            self._soup,
-            "Openingstijden",
-        )
-
-        if section is None:
-            return []
+        Only the lines under the "Openingstijden" heading itself are
+        considered: the closing days share one container with them, and a
+        dated line from that list ("Zaterdag 26 december: 10:00 tot 14:00")
+        would otherwise be filed as that weekday's regular hours.
+        """
 
         return [
             line
-            for line in selectors.paragraphs(section)
+            for line in selectors.lines_under_heading(self._soup, "Openingstijden")
             if is_opening_hours_line(line)
         ]
 
@@ -173,6 +171,34 @@ class CureParser:
 
         return locations
 
+    def heat_protocol_notice(self, today: date) -> Notice | None:
+        """Parse the site-wide heat protocol announcement, if present.
+
+        Both the news block's heading and the news items below it are
+        tried, in that order. The heading is the announcement Cure puts in
+        front of every visitor, but it is free-form editorial text, while
+        the item it links to words the same period more consistently - so
+        one reads what the other happens to leave unreadable.
+
+        Only the heading counts as current. The items below it are the
+        news archive: they stay on the page for months, so an item saying
+        "vandaag" is not saying anything about today.
+        """
+
+        heading = selectors.news_heading(self._soup)
+
+        candidates: list[tuple[str, bool]] = [(heading, True)] if heading else []
+
+        candidates += [(text, False) for text in selectors.news_item_texts(self._soup)]
+
+        for text, current in candidates:
+            notice = parse_heat_protocol_notice(text, today, current=current)
+
+            if notice is not None:
+                return notice
+
+        return None
+
     def notices(
         self,
         locations: list[Location],
@@ -185,13 +211,10 @@ class CureParser:
 
         result: list[Notice] = []
 
-        heading = selectors.news_heading(self._soup)
+        heat_protocol = self.heat_protocol_notice(today)
 
-        if heading:
-            heat_protocol = parse_heat_protocol_notice(heading, today)
-
-            if heat_protocol is not None:
-                result.append(heat_protocol)
+        if heat_protocol is not None:
+            result.append(heat_protocol)
 
         closure_section = selectors.closure_notice_section(self._soup)
 
@@ -217,12 +240,12 @@ class CureParser:
 
         return result
 
-    def parse(self) -> CureData:
+    def parse(self, today: date | None = None) -> CureData:
         """Parse the complete page."""
 
         locations = self.parse_locations()
 
         return CureData(
             locations=locations,
-            notices=self.notices(locations),
+            notices=self.notices(locations, today),
         )

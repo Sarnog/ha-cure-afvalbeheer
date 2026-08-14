@@ -1,5 +1,7 @@
 from datetime import date
 
+import pytest
+
 from custom_components.cure_afvalbeheer.notices import (
     parse_adjusted_hours,
     parse_closing_days,
@@ -7,6 +9,7 @@ from custom_components.cure_afvalbeheer.notices import (
     parse_dated_list,
     parse_explicit_closure_date,
     parse_heat_protocol_notice,
+    parse_relative_date_range,
     parse_relative_end_date,
     parse_time_range,
 )
@@ -15,6 +18,19 @@ from custom_components.cure_afvalbeheer.notices import (
 _HEAT_PROTOCOL_HEADING = (
     "Hitteprotocol update! Tot en met donderdag 16 juli gewijzigde "
     "openingstijden op de milieustraten: geopend van 08:00 tot 14:00"
+)
+
+# The same announcement as Cure worded it a month later: a period written
+# out with both of its ends, and "t/m" instead of "tot en met".
+_HEAT_PROTOCOL_RANGE_HEADING = (
+    "Let op! Hitteprotocol van 13 t/m 15 Augustus! Gewijzigde "
+    "openingstijden milieustraten van 08:00 tot 14:00."
+)
+
+# The news item that same banner links to, which words it differently again.
+_HEAT_PROTOCOL_NEWS_ITEM = (
+    "Hitteprotocol! 13 tot en met 15 Augustus aangepaste openingstijden "
+    "(08:00 - 14:00) op onze milieustraten"
 )
 
 _EINDHOVEN_CLOSURE_HEADING = "Let op! Lodewijkstraat wordt verbouwd"
@@ -101,6 +117,59 @@ def test_parse_relative_end_date_rolls_over_to_next_year():
     assert result == date(2027, 7, 16)
 
 
+def test_parse_relative_end_date_reads_a_slash_range():
+    result = parse_relative_end_date(_HEAT_PROTOCOL_RANGE_HEADING, date(2026, 8, 14))
+
+    assert result == date(2026, 8, 15)
+
+
+def test_parse_relative_date_range_reads_both_ends():
+    assert parse_relative_date_range(
+        _HEAT_PROTOCOL_RANGE_HEADING, date(2026, 8, 14)
+    ) == (date(2026, 8, 13), date(2026, 8, 15))
+
+
+def test_parse_relative_date_range_reads_a_written_out_range():
+    assert parse_relative_date_range(_HEAT_PROTOCOL_NEWS_ITEM, date(2026, 8, 14)) == (
+        date(2026, 8, 13),
+        date(2026, 8, 15),
+    )
+
+
+def test_parse_relative_date_range_without_a_start_date():
+    assert parse_relative_date_range(_HEAT_PROTOCOL_HEADING, date(2026, 7, 10)) == (
+        None,
+        date(2026, 7, 16),
+    )
+
+
+def test_parse_relative_date_range_reads_a_start_in_the_previous_month():
+    """The month is written behind the end date only: "van 30 t/m 2 augustus"."""
+
+    assert parse_relative_date_range(
+        "Hitteprotocol van 30 t/m 2 augustus", date(2026, 7, 29)
+    ) == (date(2026, 7, 30), date(2026, 8, 2))
+
+
+def test_parse_relative_date_range_reads_a_start_in_the_previous_year():
+    assert parse_relative_date_range(
+        "Gesloten van 28 december tot en met 4 januari", date(2026, 12, 20)
+    ) == (date(2026, 12, 28), date(2027, 1, 4))
+
+
+def test_parse_relative_date_range_ignores_a_time_range():
+    assert parse_relative_date_range(
+        "De milieustraten zijn geopend van 08:00 tot 14:00 uur", date(2026, 8, 14)
+    ) == (None, None)
+
+
+def test_parse_relative_date_range_without_a_period():
+    assert parse_relative_date_range("Inpaktips voor vertrek", date(2026, 8, 14)) == (
+        None,
+        None,
+    )
+
+
 def test_parse_explicit_closure_date():
     assert parse_explicit_closure_date(_EINDHOVEN_CLOSURE_BODY) == date(2025, 11, 30)
 
@@ -124,6 +193,44 @@ def test_parse_heat_protocol_notice():
     assert notice.opens == "08:00"
     assert notice.closes == "14:00"
     assert notice.ends == date(2026, 7, 16)
+
+
+def test_parse_heat_protocol_notice_reads_a_slash_range():
+    notice = parse_heat_protocol_notice(_HEAT_PROTOCOL_RANGE_HEADING, date(2026, 8, 14))
+
+    assert notice is not None
+    assert notice.reason == "hitteprotocol"
+    assert notice.closed is False
+    assert notice.opens == "08:00"
+    assert notice.closes == "14:00"
+    assert notice.starts == date(2026, 8, 13)
+    assert notice.ends == date(2026, 8, 15)
+
+
+def test_parse_heat_protocol_notice_reads_the_news_item_wording():
+    notice = parse_heat_protocol_notice(_HEAT_PROTOCOL_NEWS_ITEM, date(2026, 8, 14))
+
+    assert notice is not None
+    assert notice.opens == "08:00"
+    assert notice.closes == "14:00"
+    assert notice.starts == date(2026, 8, 13)
+    assert notice.ends == date(2026, 8, 15)
+
+
+def test_parse_heat_protocol_notice_does_not_start_before_its_period():
+    """A banner put up in advance adjusts nothing until the heat arrives."""
+
+    notice = parse_heat_protocol_notice(_HEAT_PROTOCOL_RANGE_HEADING, date(2026, 8, 10))
+
+    assert notice is not None
+    assert notice.starts == date(2026, 8, 13)
+
+
+def test_parse_heat_protocol_notice_ignores_a_stale_banner():
+    """A banner left standing reads as next year's, which is months of
+    adjusted hours rather than a spell of hot days."""
+
+    assert parse_heat_protocol_notice(_HEAT_PROTOCOL_HEADING, date(2026, 12, 1)) is None
 
 
 def test_parse_heat_protocol_notice_ignores_unrelated_heading():
@@ -441,3 +548,197 @@ def test_parse_closing_days_skips_an_impossible_date():
         parse_closing_days("Sluitingsdagen 2026", ["30 februari 2026"], date.today())
         == []
     )
+
+
+# --- Spellings Cure has not used yet, but readily could ---
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("Maandag 6 april 2026 (Pasen)", date(2026, 4, 6)),
+        ("6 apr 2026", date(2026, 4, 6)),
+        ("Maandag 6 apr. 2026", date(2026, 4, 6)),
+        ("06-04-2026", date(2026, 4, 6)),
+        ("6-4-2026 (Pasen)", date(2026, 4, 6)),
+        ("06/04/2026", date(2026, 4, 6)),
+    ],
+)
+def test_parse_closing_days_reads_a_date_however_it_is_written(line, expected):
+    notices = parse_closing_days("Sluitingsdagen 2026", [line], date(2026, 1, 1))
+
+    assert notices[0].dates == [expected]
+    assert notices[0].closed is True
+
+
+def test_parse_closing_days_does_not_read_a_number_pair_as_a_date():
+    """A numeric date needs its year in full, or a house number would do."""
+
+    assert parse_closing_days("Sluitingsdagen 2026", ["6-4-26"], date(2026, 1, 1)) == []
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "Datum sluiting: 30-11-2025",
+        "Datum sluiting 30-11-2025",
+        "Datum sluiting: 30/11/2025",
+        "Datum van sluiting: 30-11-2025",
+        "Sluitingsdatum: 30-11-2025",
+        "Datum sluiting: 30 november 2025",
+    ],
+)
+def test_parse_explicit_closure_date_however_it_is_written(body):
+    assert parse_explicit_closure_date(body, date(2026, 7, 17)) == date(2025, 11, 30)
+
+
+def test_parse_explicit_closure_date_ignores_a_date_further_along():
+    """Only the text right behind the label counts as the closure date."""
+
+    body = "Datum sluiting: nog niet bekend. Wij zijn geopend op 6 april 2026."
+
+    assert parse_explicit_closure_date(body, date(2026, 1, 1)) is None
+
+
+def test_parse_dated_list_without_a_year():
+    result = parse_dated_list(
+        "Gesloten op dinsdag 30 juni en woensdag 1 juli", date(2026, 6, 1)
+    )
+
+    assert result == [date(2026, 6, 30), date(2026, 7, 1)]
+
+
+def test_parse_dated_list_reads_numeric_dates():
+    result = parse_dated_list("Gesloten op 30-06-2026 en 01-07-2026", date(2026, 6, 1))
+
+    assert result == [date(2026, 6, 30), date(2026, 7, 1)]
+
+
+def test_parse_closure_notice_reads_a_period():
+    notice = parse_closure_notice(
+        "Let op! Milieustraat dicht i.v.m. werkzaamheden.",
+        "De milieustraat is gesloten van 30 juni tot en met 2 juli.",
+        date(2026, 6, 1),
+    )
+
+    assert notice is not None
+    assert notice.closed is True
+    assert notice.starts == date(2026, 6, 30)
+    assert notice.ends == date(2026, 7, 2)
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "Let op! Milieustraat dicht i.v.m. werkzaamheden.",
+        "Let op: Milieustraat dicht i.v.m. werkzaamheden.",
+        "LET OP! Milieustraat dicht i.v.m. werkzaamheden.",
+        "Let op, milieustraat dicht i.v.m. werkzaamheden.",
+        "Letop! Milieustraat dicht i.v.m. werkzaamheden.",
+    ],
+)
+def test_parse_closure_notice_however_the_heading_is_punctuated(heading):
+    notice = parse_closure_notice(heading, "Dinsdag 30 juni 2026", date(2026, 6, 1))
+
+    assert notice is not None
+    assert notice.dates == [date(2026, 6, 30)]
+
+
+def test_parse_closure_notice_ignores_a_heading_without_the_wording():
+    assert (
+        parse_closure_notice(
+            "Inpaktips voor vertrek", "Dinsdag 30 juni 2026", date(2026, 6, 1)
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "starts", "ends", "opens", "closes"),
+    [
+        (
+            "Hitteprotocol van 13 tot 15 augustus: geopend van 08.00 tot 14.00 uur",
+            date(2026, 8, 13),
+            date(2026, 8, 15),
+            "08:00",
+            "14:00",
+        ),
+        (
+            "Hitte-protocol van 13 t/m 15 augustus: geopend van 8:00 tot 14:00",
+            date(2026, 8, 13),
+            date(2026, 8, 15),
+            "08:00",
+            "14:00",
+        ),
+        (
+            "Hitteprotocol! Vandaag sluiten onze milieustraten om 14:00 uur",
+            date(2026, 8, 14),
+            date(2026, 8, 14),
+            None,
+            "14:00",
+        ),
+        (
+            "Hitteprotocol: milieustraten vandaag geopend tot 14:00 uur",
+            date(2026, 8, 14),
+            date(2026, 8, 14),
+            None,
+            "14:00",
+        ),
+        (
+            "Hitteprotocol 13 augustus: geopend van 08:00 tot 14:00 uur",
+            date(2026, 8, 13),
+            date(2026, 8, 13),
+            "08:00",
+            "14:00",
+        ),
+        (
+            "Vanwege de hitte zijn de milieustraten van 13 t/m 15 augustus "
+            "geopend van 08:00 tot 14:00",
+            date(2026, 8, 13),
+            date(2026, 8, 15),
+            "08:00",
+            "14:00",
+        ),
+    ],
+)
+def test_parse_heat_protocol_notice_however_it_is_written(
+    text, starts, ends, opens, closes
+):
+    notice = parse_heat_protocol_notice(text, date(2026, 8, 14))
+
+    assert notice is not None
+    assert notice.starts == starts
+    assert notice.ends == ends
+    assert notice.opens == opens
+    assert notice.closes == closes
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Hitteprotocol! Kijk op de website voor de aangepaste openingstijden",
+        "Hittegolf op komst: 5 tips om je afval koel te bewaren",
+        "Hitteprotocol van 13 t/m 15 augustus",
+    ],
+)
+def test_parse_heat_protocol_notice_needs_both_a_period_and_a_time(text):
+    """Half an announcement is not one: nothing beats a wrong guess."""
+
+    assert parse_heat_protocol_notice(text, date(2026, 8, 14)) is None
+
+
+def test_parse_time_range_with_dots():
+    assert parse_time_range("geopend van 08.00 tot 14.00 uur") == ("08:00", "14:00")
+
+
+def test_parse_time_range_pads_a_single_digit_hour():
+    assert parse_time_range("geopend van 8:00 tot 14:00") == ("08:00", "14:00")
+
+
+def test_parse_heat_protocol_notice_ignores_vandaag_in_archived_text():
+    """A news item stays on the page for months; its "vandaag" is not today."""
+
+    text = "Hitteprotocol! Vandaag geopend van 08:00 tot 14:00 uur"
+
+    assert parse_heat_protocol_notice(text, date(2026, 8, 14)) is not None
+    assert parse_heat_protocol_notice(text, date(2026, 8, 14), current=False) is None

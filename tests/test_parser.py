@@ -3,6 +3,7 @@ from pathlib import Path
 
 from custom_components.cure_afvalbeheer.models import Location
 from custom_components.cure_afvalbeheer.parser import CureParser, location_hint_for
+from custom_components.cure_afvalbeheer.weekday import Weekday
 
 
 def test_page_title():
@@ -144,6 +145,56 @@ def test_notices_finds_heat_protocol_and_scoped_closure():
     assert closure.location_hint == "Milieustraat Lodewijkstraat"
 
 
+def test_heat_protocol_notice_from_the_news_block_heading():
+    """The heading Cure puts in front of every visitor is read first."""
+
+    html = Path("tests/fixtures/news_block_heat_protocol.html").read_text(
+        encoding="utf-8"
+    )
+
+    notice = CureParser(html).heat_protocol_notice(date(2026, 8, 14))
+
+    assert notice is not None
+    assert notice.title.startswith("Let op! Hitteprotocol van 13 t/m 15 Augustus!")
+    assert notice.opens == "08:00"
+    assert notice.closes == "14:00"
+    assert notice.starts == date(2026, 8, 13)
+    assert notice.ends == date(2026, 8, 15)
+
+
+def test_heat_protocol_notice_falls_back_to_the_news_items():
+    """When the editors word the heading in a way that cannot be read, the
+    news item it links to still spells the period out."""
+
+    html = (
+        Path("tests/fixtures/news_block_heat_protocol.html")
+        .read_text(encoding="utf-8")
+        .replace(
+            "Let op! Hitteprotocol van 13 t/m 15 Augustus! Gewijzigde "
+            "openingstijden milieustraten van 08:00 tot 14:00.",
+            "Let op! Hitteprotocol deze week!",
+        )
+    )
+
+    notice = CureParser(html).heat_protocol_notice(date(2026, 8, 14))
+
+    assert notice is not None
+    assert notice.title.startswith("Hitteprotocol! 13 tot en met 15 Augustus")
+    assert notice.opens == "08:00"
+    assert notice.closes == "14:00"
+    assert notice.ends == date(2026, 8, 15)
+
+
+def test_heat_protocol_notice_returns_none_without_one():
+    html = Path("tests/fixtures/news_block_heat_protocol.html").read_text(
+        encoding="utf-8"
+    )
+
+    parser = CureParser(html.replace("Hitteprotocol", "Zomerweetje"))
+
+    assert parser.heat_protocol_notice(date(2026, 8, 14)) is None
+
+
 def test_notices_finds_the_closing_days():
     """The closing days apply to every recycling centre on the page."""
 
@@ -201,3 +252,85 @@ def test_location_hint_for_ignores_a_heading_naming_both_locations():
     )
 
     assert result is None
+
+
+# A page written the way Cure could just as well have written it: hours in
+# a table with a day range, a numeric closing day, and the notice heading
+# punctuated differently. Not one word of it is content the parser has not
+# been asked for - only the shape and spelling differ.
+_REWORDED_PAGE = """
+<html><body>
+<section data-block="newsBlock">
+    <div><h2>Let op: hitte-protocol van 13 t/m 15 augustus,
+    milieustraten geopend van 08.00 tot 14.00 uur</h2></div>
+</section>
+<section>
+    <h2>Adressen milieustraten Eindhoven</h2>
+    <h3>Milieustraat Acht</h3>
+    <p>Achtseweg Noord 41 5651 GG Eindhoven</p>
+</section>
+<section>
+    <h2>Openingstijden milieustraat</h2>
+    <table>
+        <tr><td>Ma t/m vr</td><td>08.30 - 17.00</td></tr>
+        <tr><td>Zaterdag</td><td>10:00 tot 16:00</td></tr>
+        <tr><td>Zon &amp; feestdagen</td><td>Gesloten</td></tr>
+    </table>
+    <h2>Sluitingsdata 2026</h2>
+    <ul>
+        <li>06-04-2026 (Pasen)</li>
+        <li>24 dec 2026: geopend tot 16.00 uur</li>
+    </ul>
+</section>
+</body></html>
+"""
+
+
+def test_parse_a_page_written_differently_throughout():
+    parser = CureParser(_REWORDED_PAGE)
+
+    locations = parser.parse_locations()
+
+    assert [location.name for location in locations] == ["Milieustraat Acht"]
+
+    hours = {entry.day: entry for entry in locations[0].hours}
+
+    assert hours[Weekday.MONDAY].opens == "08:30"
+    assert hours[Weekday.FRIDAY].closes == "17:00"
+    assert hours[Weekday.SATURDAY].opens == "10:00"
+    assert hours[Weekday.HOLIDAY].closed
+
+    notices = parser.notices(locations, today=date(2026, 8, 14))
+
+    heat_protocol = next(n for n in notices if n.reason == "hitteprotocol")
+    assert heat_protocol.starts == date(2026, 8, 13)
+    assert heat_protocol.ends == date(2026, 8, 15)
+    assert (heat_protocol.opens, heat_protocol.closes) == ("08:00", "14:00")
+
+    closing_day = next(n for n in notices if n.reason == "sluitingsdag")
+    assert closing_day.dates == [date(2026, 4, 6)]
+
+    adjusted = next(n for n in notices if n.reason == "aangepaste openingstijden")
+    assert adjusted.dates == [date(2026, 12, 24)]
+    assert adjusted.closes == "16:00"
+
+
+def test_heat_protocol_notice_does_not_read_vandaag_from_a_news_item():
+    """The banner heading is current; the archive below it is not."""
+
+    html = (
+        Path("tests/fixtures/news_block_heat_protocol.html")
+        .read_text(encoding="utf-8")
+        .replace(
+            "Let op! Hitteprotocol van 13 t/m 15 Augustus! Gewijzigde "
+            "openingstijden milieustraten van 08:00 tot 14:00.",
+            "Welkom bij Cure",
+        )
+        .replace(
+            "Hitteprotocol! 13 tot en met 15 Augustus aangepaste "
+            "openingstijden (08:00 - 14:00) op onze milieustraten",
+            "Hitteprotocol! Vandaag geopend van 08:00 tot 14:00 uur",
+        )
+    )
+
+    assert CureParser(html).heat_protocol_notice(date(2026, 10, 1)) is None

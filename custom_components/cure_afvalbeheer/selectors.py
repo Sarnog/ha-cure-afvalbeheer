@@ -2,12 +2,23 @@
 
 from __future__ import annotations
 
+import re
+
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
 _HEADING_LEVELS = ("h1", "h2", "h3", "h4")
 
-_CLOSING_DAYS_HEADING = "sluitingsdag"
+# How the list of days off is headed. "Sluitingsdagen" and "Sluitingsdata"
+# share their opening, and the year Cure appends is left out of all of
+# them. The wider alternatives are safe because the block is read line by
+# line further down: a line without a date yields nothing, and one saying
+# the location is open yields adjusted hours rather than a closure.
+_CLOSING_DAYS_HEADINGS = ("sluitingsda", "gesloten dagen", "feestdagen")
+
+# How an active notice announces itself. Cure varies the punctuation
+# behind it ("Let op!", "Let op:", "Let op,"), so only the words count.
+_ATTENTION_HEADING = re.compile(r"^let\s*op\b", re.IGNORECASE)
 
 
 def page_title(soup: BeautifulSoup) -> str:
@@ -45,47 +56,58 @@ def all_headings(soup: BeautifulSoup) -> list[str]:
     return result
 
 
-def section_with_heading(
-    soup: BeautifulSoup,
-    heading: str,
-) -> Tag | None:
-    """Return the section that contains the given heading.
+def heading_with_text(soup: BeautifulSoup, wanted: str) -> Tag | None:
+    """Return the heading carrying the given text, if the page has one.
 
-    Matches case-insensitively, and falls back to the nearest div/article
-    ancestor if there is no <section> wrapper - the heading text is the
-    reliable signal, not the specific container tag Cure happens to use.
+    Matches case-insensitively across every heading level. Cure adds words
+    to its headings from time to time ("Openingstijden milieustraat"), so
+    a heading that merely opens with the wanted text, or carries it
+    somewhere inside, counts too. The closest match wins: an exact heading
+    beats one that only starts with it, which in turn beats one that only
+    contains it - otherwise a heading reading "Afwijkende openingstijden"
+    could be picked over the real one purely for standing higher up the
+    page.
     """
 
-    heading_lower = heading.strip().lower()
+    target = wanted.strip().lower()
 
-    for h2 in soup.find_all("h2"):
-        text = h2.get_text(" ", strip=True)
+    starts_with: Tag | None = None
+    contains: Tag | None = None
 
-        if text.lower() != heading_lower:
-            continue
+    for heading in headings(soup):
+        text = _plain_text(heading).lower()
 
-        section = h2.find_parent("section")
+        if text == target:
+            return heading
 
-        if section is not None:
-            return section
+        if starts_with is None and text.startswith(target):
+            starts_with = heading
 
-        return h2.find_parent(["div", "article"]) or h2.parent
+        elif contains is None and target in text:
+            contains = heading
 
-    return None
+    return starts_with or contains
 
 
-def paragraphs(section: Tag) -> list[str]:
-    """Return all paragraph text."""
+def lines_under_heading(soup: BeautifulSoup, wanted: str) -> list[str]:
+    """Return the lines of text belonging to one heading's own block.
 
-    result: list[str] = []
+    The block ends where the next heading of the same or a higher level
+    begins, which is what keeps a list sharing one container with another
+    (Cure puts the opening hours and the closing days in a single prose
+    div) from bleeding into its neighbour.
+    """
 
-    for paragraph in section.find_all("p"):
-        text = paragraph.get_text(" ", strip=True)
+    heading = heading_with_text(soup, wanted)
 
-        if text:
-            result.append(text)
+    if heading is None:
+        return []
 
-    return result
+    return [
+        text
+        for text in (_plain_text(el) for el in _text_elements_after(heading))
+        if text
+    ]
 
 
 def location_name(soup: BeautifulSoup) -> str:
@@ -106,12 +128,17 @@ def address_section(soup: BeautifulSoup) -> Tag | None:
     municipalities with one location and plural ("Adres Milieustraten
     <Gemeente>") for municipalities with more than one. Dutch pluralises
     "straat" as "straten" (not "straaten"), so "Milieustraat" is not a
-    prefix of "Milieustraten" - match on "Milieustra", the part shared by
-    both, rather than an exact, municipality-specific string.
+    prefix of "Milieustraten" - match on "milieustra", the part shared by
+    both, rather than an exact, municipality-specific string. The label in
+    front of it is matched on "adres" alone for the same reason ("Adres",
+    "Adressen"), and the whole comparison is case-insensitive: how a
+    heading is capitalised says nothing about what it is.
     """
 
     for heading in soup.find_all("h2"):
-        if heading.get_text(strip=True).startswith("Adres Milieustra"):
+        text = _plain_text(heading).lower()
+
+        if text.startswith(("adres", "locatie")) and "milieustra" in text:
             return heading.parent
 
     return None
@@ -138,16 +165,52 @@ def news_heading(soup: BeautifulSoup) -> str | None:
     return heading.get_text(strip=True)
 
 
+def news_item_texts(soup: BeautifulSoup) -> list[str]:
+    """Return the teaser line of every item in the site-wide news block.
+
+    The block's own heading is written by the editors and can say anything;
+    the items below it are the news articles themselves, and an
+    announcement the heading words loosely is often spelled out precisely
+    in the item it links to. Each item carries its date and its title
+    twice (once for screen readers), so only the paragraph holding the
+    title is taken.
+    """
+
+    block = soup.find(attrs={"data-block": "newsBlock"})
+
+    if block is None:
+        return []
+
+    result: list[str] = []
+
+    for item in block.find_all("li"):
+        teaser = item.find("p")
+
+        if teaser is None:
+            continue
+
+        text = _plain_text(teaser)
+
+        if text:
+            result.append(text)
+
+    return result
+
+
 def closure_notice_section(soup: BeautifulSoup) -> Tag | None:
     """Return the active closure/renovation notice block, if present.
 
     A municipality page can have several "textAndMedia" blocks for
     unrelated content (packing tips, etc). An active notice is the only
-    one whose heading starts with "Let op!".
+    one whose heading opens with "Let op" - the punctuation Cure puts
+    behind that is not part of the signal.
 
     Falls back to any section/div/article with such a heading if no block
     is tagged data-block="textAndMedia" - the "Let op!" heading text is
-    the reliable signal, not that specific attribute.
+    the reliable signal, not that specific attribute. The site-wide news
+    block is skipped there: its heading opens with "Let op!" just as often
+    (an active heat protocol, say), and reading a heading about adjusted
+    hours as a closure would state the opposite of what it says.
     """
 
     for block in soup.find_all(attrs={"data-block": "textAndMedia"}):
@@ -156,12 +219,17 @@ def closure_notice_section(soup: BeautifulSoup) -> Tag | None:
         if heading is None:
             continue
 
-        if heading.get_text(strip=True).lower().startswith("let op!"):
+        if _ATTENTION_HEADING.match(_plain_text(heading)):
             return block
 
     for heading in soup.find_all("h2"):
-        if heading.get_text(strip=True).lower().startswith("let op!"):
-            return heading.find_parent(["section", "div", "article"]) or heading.parent
+        if not _ATTENTION_HEADING.match(_plain_text(heading)):
+            continue
+
+        if heading.find_parent(attrs={"data-block": "newsBlock"}) is not None:
+            continue
+
+        return heading.find_parent(["section", "div", "article"]) or heading.parent
 
     return None
 
@@ -181,14 +249,33 @@ def _block_end_tags(heading: Tag) -> tuple[str, ...]:
     return _HEADING_LEVELS[: _HEADING_LEVELS.index(heading.name) + 1]
 
 
+_LINE_TAGS = ("p", "li", "tr")
+
+
+def _owns_its_line(element: Tag) -> bool:
+    """Return whether an element holds a line of its own.
+
+    A <li><p>...</p></li> and a <tr><td><p>...</p></td></tr> both yield
+    their text more than once; the outermost of them owns the line.
+    """
+
+    if element.name == "tr":
+        return True
+
+    return element.find_parent(["li", "tr"]) is None
+
+
 def _text_elements_after(heading: Tag) -> list[Tag]:
-    """Return the paragraphs and list items belonging to heading's block.
+    """Return the text elements belonging to heading's block.
 
     Cure gives this content no container of its own, so it is collected by
     walking forward from the heading until the next heading of the same or
-    a higher level. The sibling walk is the precise one; the document-order
-    walk is a fallback for the day the heading gets wrapped in an element
-    of its own, which would leave it without any content siblings at all.
+    a higher level. Paragraphs, list items and table rows all count: a
+    line-per-line list is content, and Cure can move it from one of those
+    into another without changing a word of it. The sibling walk is the
+    precise one; the document-order walk is a fallback for the day the
+    heading gets wrapped in an element of its own, which would leave it
+    without any content siblings at all.
     """
 
     end_tags = _block_end_tags(heading)
@@ -200,24 +287,22 @@ def _text_elements_after(heading: Tag) -> list[Tag]:
             continue
 
         if sibling.name in end_tags:
-            return elements
-
-        if sibling.name in ("p", "li"):
-            elements.append(sibling)
-
-        elements.extend(sibling.find_all(["p", "li"]))
-
-    if elements:
-        return elements
-
-    for element in heading.find_all_next():
-        if element.name in end_tags:
             break
 
-        if element.name in ("p", "li"):
-            elements.append(element)
+        if sibling.name in _LINE_TAGS:
+            elements.append(sibling)
 
-    return elements
+        elements.extend(sibling.find_all(list(_LINE_TAGS)))
+
+    if not elements:
+        for element in heading.find_all_next():
+            if element.name in end_tags:
+                break
+
+            if element.name in _LINE_TAGS:
+                elements.append(element)
+
+    return [element for element in elements if _owns_its_line(element)]
 
 
 def closing_days_blocks(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
@@ -236,7 +321,7 @@ def closing_days_blocks(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
     for heading in soup.find_all(list(_HEADING_LEVELS)):
         title = _plain_text(heading)
 
-        if not title.lower().startswith(_CLOSING_DAYS_HEADING):
+        if not title.lower().startswith(_CLOSING_DAYS_HEADINGS):
             continue
 
         lines: list[str] = []

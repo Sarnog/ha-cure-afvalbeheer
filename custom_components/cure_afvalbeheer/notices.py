@@ -16,20 +16,33 @@ from datetime import date, timedelta
 
 from .logger import LOGGER
 from .models import Notice
+from .times import CLOCK_SEPARATOR, RANGE_SEPARATOR, hhmm
 
 _MONTHS = {
     "januari": 1,
+    "jan": 1,
     "februari": 2,
+    "feb": 2,
     "maart": 3,
+    "mrt": 3,
     "april": 4,
+    "apr": 4,
     "mei": 5,
     "juni": 6,
+    "jun": 6,
     "juli": 7,
+    "jul": 7,
     "augustus": 8,
+    "aug": 8,
     "september": 9,
+    "sept": 9,
+    "sep": 9,
     "oktober": 10,
+    "okt": 10,
     "november": 11,
+    "nov": 11,
     "december": 12,
+    "dec": 12,
 }
 
 _WEEKDAYS = (
@@ -42,27 +55,78 @@ _WEEKDAYS = (
     "zondag",
 )
 
-_MONTH_PATTERN = "|".join(_MONTHS)
+# Longest first: in an alternation the first match wins, and "januari"
+# read as "jan" would leave "uari" behind to break the pattern around it.
+_MONTH_PATTERN = "|".join(sorted(_MONTHS, key=len, reverse=True))
 _WEEKDAY_PATTERN = "|".join(_WEEKDAYS)
 
 _TIME_RANGE = re.compile(
-    r"(?P<open>\d{2}:\d{2})\s*(?:tot|-|t/m)\s*(?P<close>\d{2}:\d{2})",
+    rf"(?<!\d)(?P<open_hour>\d{{1,2}}){CLOCK_SEPARATOR}(?P<open_minute>\d{{2}})"
+    rf"\s*{RANGE_SEPARATOR}\s*"
+    rf"(?P<close_hour>\d{{1,2}}){CLOCK_SEPARATOR}(?P<close_minute>\d{{2}})(?!\d)",
     re.IGNORECASE,
 )
 
+# A date written in numbers ("06-04-2026", "6/4/2026"). The year has to be
+# written out in full: two digits leave too much room for a house number or
+# a time to be read as a date.
+_NUMERIC_DATE = re.compile(
+    r"(?<!\d)(?P<day>\d{1,2})[-/.](?P<month>\d{1,2})[-/.](?P<year>\d{4})(?!\d)"
+)
+
+# Cure labels the date a location closes for good in more than one way,
+# and writes the date itself either in numbers or in words.
 _EXPLICIT_CLOSURE_DATE = re.compile(
-    r"datum sluiting:?\s*(?P<day>\d{2})-(?P<month>\d{2})-(?P<year>\d{4})",
+    r"(?:datum\s+(?:van\s+)?sluiting|sluitingsdatum)\s*:?\s*(?P<date>.{0,32})",
     re.IGNORECASE,
 )
 
+# Cure words the end of a temporary deviation as "tot en met", "t/m" or
+# plain "tot". A bare dash is not accepted here: on its own it reads as
+# ordinary punctuation, and only inside a range (below) does it clearly
+# separate two dates.
 _RELATIVE_END_DATE = re.compile(
-    rf"tot en met\s+(?:(?:{_WEEKDAY_PATTERN})\s+)?"
-    rf"(?P<day>\d{{1,2}})\s+(?P<month>{_MONTH_PATTERN})",
+    rf"\b(?:tot en met|t/m|tot)\s+(?:(?:{_WEEKDAY_PATTERN})\s+)?"
+    rf"(?<!\d)(?P<day>\d{{1,2}})\s+(?P<month>{_MONTH_PATTERN})\b",
     re.IGNORECASE,
 )
 
+# One date on its own ("Hitteprotocol 13 augustus"), used only where no
+# period was written at all.
+_SINGLE_DATE = re.compile(
+    rf"(?:\b(?:{_WEEKDAY_PATTERN})\s+)?"
+    rf"(?<!\d)(?P<day>\d{{1,2}})\s+(?P<month>{_MONTH_PATTERN})\b",
+    re.IGNORECASE,
+)
+
+_TODAY_WORDING = re.compile(r"\bvandaag\b", re.IGNORECASE)
+
+# How an active notice announces itself, the punctuation behind it being
+# Cure's to vary ("Let op!", "Let op:", "Let op,").
+_ATTENTION_WORDING = re.compile(r"^\s*let\s*op\b", re.IGNORECASE)
+
+# A period written out with both of its ends ("van 13 t/m 15 augustus",
+# "13 tot en met 15 Augustus", "van 30 juli - 2 augustus"). The month is
+# usually written behind the end date only, so the start date borrows it.
+# Requiring a month behind the end date is what keeps times out of this:
+# in "van 08:00 tot 14:00" no month name follows the second number.
+_RELATIVE_DATE_RANGE = re.compile(
+    rf"(?:\bvan(?:af)?\s+)?(?:(?:{_WEEKDAY_PATTERN})\s+)?"
+    rf"(?<!\d)(?P<start_day>\d{{1,2}})"
+    rf"(?:\s+(?P<start_month>{_MONTH_PATTERN}))?"
+    rf"\s*(?:tot en met|t/m|tot|[-–—])\s*"
+    rf"(?:(?:{_WEEKDAY_PATTERN})\s+)?"
+    rf"(?<!\d)(?P<end_day>\d{{1,2}})\s+(?P<end_month>{_MONTH_PATTERN})\b",
+    re.IGNORECASE,
+)
+
+# The dates a closure notice lists in its body ("Dinsdag 30 juni 2026").
+# The weekday in front stays required: it is what separates a list of
+# closing dates from a date mentioned in passing in the surrounding prose.
+# The year behind it does not - Cure leaves it out as often as not.
 _DATED_LIST_ENTRY = re.compile(
-    rf"(?:{_WEEKDAY_PATTERN})\s+(?P<day>\d{{1,2}})\s+(?P<month>{_MONTH_PATTERN})\s+(?P<year>\d{{4}})",
+    rf"(?:{_WEEKDAY_PATTERN})\s+(?<!\d)(?P<day>\d{{1,2}})\s+"
+    rf"(?P<month>{_MONTH_PATTERN})\b(?:\s+(?P<year>\d{{4}})(?!\d))?",
     re.IGNORECASE,
 )
 
@@ -99,6 +163,11 @@ _SPANNING_SEPARATOR = re.compile(r"t/m|tot en met|\s[-–—]\s", re.IGNORECASE)
 # A closing days list announces days off around a holiday, not a closure of
 # months; a range coming out longer than this is read as a misparse.
 _MAX_SPAN_DAYS = 31
+
+# A heat protocol covers a spell of hot days, so its period stays within
+# roughly a fortnight; anything longer is read as a stale or misparsed
+# banner rather than as adjusted hours to apply.
+_MAX_HEAT_PROTOCOL_DAYS = 14
 
 _YEAR = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
 
@@ -147,44 +216,19 @@ def parse_time_range(text: str) -> tuple[str, str] | None:
     if match is None:
         return None
 
-    return match.group("open"), match.group("close")
+    opens = hhmm(match.group("open_hour"), match.group("open_minute"))
+    closes = hhmm(match.group("close_hour"), match.group("close_minute"))
 
-
-def parse_relative_end_date(text: str, today: date) -> date | None:
-    """Extract a "tot en met <dag> <maand>" end date, inferring the year.
-
-    The year is never written for a "tot en met" end date since it always
-    describes a currently active notice. If the resulting date would be
-    more than 30 days in the past, assume it rolled over into the next
-    year (e.g. a notice made in late December about early January).
-    """
-
-    match = _RELATIVE_END_DATE.search(text)
-
-    if match is None:
+    if opens is None or closes is None:
         return None
 
-    day = int(match.group("day"))
-    month = _MONTHS[match.group("month").lower()]
-
-    try:
-        result = date(today.year, month, day)
-    except ValueError:
-        return None
-
-    if (today - result) > timedelta(days=30):
-        try:
-            result = date(today.year + 1, month, day)
-        except ValueError:
-            return None
-
-    return result
+    return opens, closes
 
 
-def parse_explicit_closure_date(text: str) -> date | None:
-    """Extract a "Datum sluiting: DD-MM-JJJJ" date."""
+def parse_numeric_date(text: str) -> date | None:
+    """Extract the first date written in numbers, if there is one."""
 
-    match = _EXPLICIT_CLOSURE_DATE.search(text)
+    match = _NUMERIC_DATE.search(text)
 
     if match is None:
         return None
@@ -199,34 +243,218 @@ def parse_explicit_closure_date(text: str) -> date | None:
         return None
 
 
-def parse_dated_list(text: str) -> list[date]:
-    """Extract a list of "<weekday> <dag> <maand> <jaar>" entries."""
+def _relative_date(day: int, month: int, today: date) -> date | None:
+    """Build a date from a day and month, inferring the year.
 
-    result: list[date] = []
+    The year is never written for a currently active notice. If the date
+    would land more than 30 days in the past, assume it rolled over into
+    the next year (e.g. a notice made in late December about early
+    January).
+    """
 
-    for match in _DATED_LIST_ENTRY.finditer(text):
-        month = _MONTHS[match.group("month").lower()]
+    try:
+        result = date(today.year, month, day)
+    except ValueError:
+        return None
 
+    if (today - result) > timedelta(days=30):
         try:
-            result.append(
-                date(int(match.group("year")), month, int(match.group("day")))
-            )
+            return date(today.year + 1, month, day)
         except ValueError:
-            continue
+            return None
 
     return result
 
 
-def _hhmm(hour: str, minute: str | None) -> str | None:
-    """Return an "HH:MM" time, or None if the numbers are not a time."""
+def _a_month_earlier(day: date) -> date | None:
+    """Return the same day number one month earlier, if it exists."""
 
-    hours = int(hour)
-    minutes = int(minute) if minute is not None else 0
+    month = day.month - 1 if day.month > 1 else 12
+    year = day.year if day.month > 1 else day.year - 1
 
-    if hours > 23 or minutes > 59:
+    try:
+        return date(year, month, day.day)
+    except ValueError:
         return None
 
-    return f"{hours:02d}:{minutes:02d}"
+
+def _a_year_earlier(day: date) -> date | None:
+    """Return the same day one year earlier, if it exists.
+
+    29 February does not, three years out of four.
+    """
+
+    try:
+        return date(day.year - 1, day.month, day.day)
+    except ValueError:
+        return None
+
+
+def _range_start(day: int, month: int, end: date, month_written: bool) -> date | None:
+    """Build the start date of a range that ends on end.
+
+    The start borrows the end's year, and its month too when the text does
+    not write one ("van 13 t/m 15 augustus"). Either can put the start
+    behind the end: a range running into a new month ("van 30 t/m 2
+    augustus") is one month earlier, one running into a new year ("van 28
+    december t/m 4 januari") one year. Anything still out of order after
+    that is not read as a start date at all, leaving the notice to apply
+    from today - the same as when no start date is written.
+    """
+
+    try:
+        start = date(end.year, month, day)
+    except ValueError:
+        return None
+
+    if start <= end:
+        return start
+
+    shifted = _a_year_earlier(start) if month_written else _a_month_earlier(start)
+
+    if shifted is None or shifted > end:
+        return None
+
+    return shifted
+
+
+def parse_relative_date_range(
+    text: str, today: date
+) -> tuple[date | None, date | None]:
+    """Extract the period a currently active notice announces.
+
+    Returns it as (starts, ends). Cure writes such a period either with
+    both of its ends ("van 13 t/m 15 augustus") or with only the last one
+    ("tot en met donderdag 16 juli"); in the latter case starts is None and
+    the notice applies from today. Both are None when the text announces no
+    period at all.
+    """
+
+    match = _RELATIVE_DATE_RANGE.search(text)
+
+    if match is not None:
+        end = _relative_date(
+            int(match.group("end_day")),
+            _MONTHS[match.group("end_month").lower()],
+            today,
+        )
+
+        if end is None:
+            return None, None
+
+        start_month = match.group("start_month")
+
+        start = _range_start(
+            int(match.group("start_day")),
+            _MONTHS[(start_month or match.group("end_month")).lower()],
+            end,
+            start_month is not None,
+        )
+
+        return start, end
+
+    match = _RELATIVE_END_DATE.search(text)
+
+    if match is None:
+        return None, None
+
+    end = _relative_date(
+        int(match.group("day")),
+        _MONTHS[match.group("month").lower()],
+        today,
+    )
+
+    return None, end
+
+
+def parse_relative_end_date(text: str, today: date) -> date | None:
+    """Extract the end date of a currently active notice, if it has one."""
+
+    return parse_relative_date_range(text, today)[1]
+
+
+def parse_explicit_closure_date(text: str, today: date | None = None) -> date | None:
+    """Extract the date behind a "Datum sluiting:" label.
+
+    The date itself is read in numbers ("30-11-2025") or in words ("30
+    november 2025"); only the text right behind the label is looked at, so
+    a date elsewhere in the notice cannot be mistaken for this one.
+    """
+
+    match = _EXPLICIT_CLOSURE_DATE.search(text)
+
+    if match is None:
+        return None
+
+    written = match.group("date")
+
+    numeric = parse_numeric_date(written)
+
+    if numeric is not None:
+        return numeric
+
+    return _first_written_date(written, today if today is not None else date.today())
+
+
+def _first_written_date(text: str, today: date) -> date | None:
+    """Return the first date written out in words, if there is one."""
+
+    match = _SINGLE_DATE.search(text)
+
+    if match is None:
+        return None
+
+    month = _MONTHS[match.group("month").lower()]
+    day = int(match.group("day"))
+
+    year_match = _YEAR.search(text[match.end() :])
+
+    if year_match is not None:
+        try:
+            return date(int(year_match.group()), month, day)
+        except ValueError:
+            return None
+
+    return _relative_date(day, month, today)
+
+
+def parse_dated_list(text: str, today: date | None = None) -> list[date]:
+    """Extract a list of "<weekday> <dag> <maand> [jaar]" entries."""
+
+    if today is None:
+        today = date.today()
+
+    result: list[date] = []
+
+    for match in _NUMERIC_DATE.finditer(text):
+        try:
+            result.append(
+                date(
+                    int(match.group("year")),
+                    int(match.group("month")),
+                    int(match.group("day")),
+                )
+            )
+        except ValueError:
+            continue
+
+    for match in _DATED_LIST_ENTRY.finditer(text):
+        month = _MONTHS[match.group("month").lower()]
+        day = int(match.group("day"))
+        year = match.group("year")
+
+        if year is not None:
+            try:
+                found = date(int(year), month, day)
+            except ValueError:
+                continue
+        else:
+            found = _relative_date(day, month, today)
+
+        if found is not None and found not in result:
+            result.append(found)
+
+    return result
 
 
 def _lone_time(match: re.Match[str], text: str) -> str | None:
@@ -242,7 +470,7 @@ def _lone_time(match: re.Match[str], text: str) -> str | None:
     if minute is None and not _TRAILING_HOUR_UNIT.match(text[match.end() :]):
         return None
 
-    return _hhmm(match.group("hour"), minute)
+    return hhmm(match.group("hour"), minute)
 
 
 def parse_adjusted_hours(text: str) -> tuple[str | None, str | None]:
@@ -259,8 +487,8 @@ def parse_adjusted_hours(text: str) -> tuple[str | None, str | None]:
     range_match = _ADJUSTED_RANGE.search(text)
 
     if range_match is not None:
-        opens = _hhmm(range_match.group("open_hour"), range_match.group("open_minute"))
-        closes = _hhmm(
+        opens = hhmm(range_match.group("open_hour"), range_match.group("open_minute"))
+        closes = hhmm(
             range_match.group("close_hour"), range_match.group("close_minute")
         )
 
@@ -412,9 +640,30 @@ def _span(start: date, dates: list[date], explicit_year: bool) -> list[date]:
 
 
 def _closing_day_dates(text: str, today: date, heading_year: int | None) -> list[date]:
-    """Extract every date one closing days entry stands for."""
+    """Extract every date one closing days entry stands for.
+
+    A date written in numbers ("06-04-2026") is read first and on its own:
+    it carries its own year and cannot be part of a range written the way
+    the dates in words are.
+    """
 
     result: list[date] = []
+
+    for match in _NUMERIC_DATE.finditer(text):
+        try:
+            found = date(
+                int(match.group("year")),
+                int(match.group("month")),
+                int(match.group("day")),
+            )
+        except ValueError:
+            continue
+
+        if found not in result:
+            result.append(found)
+
+    if result:
+        return result
 
     previous_end: int | None = None
 
@@ -499,18 +748,77 @@ def parse_closing_days(heading: str, lines: list[str], today: date) -> list[Noti
     return result
 
 
-def parse_heat_protocol_notice(heading: str, today: date) -> Notice | None:
-    """Parse the site-wide heat protocol banner, if present."""
+def _heat_protocol_period(
+    text: str, today: date, current: bool
+) -> tuple[date | None, date | None]:
+    """Return the period a heat protocol announcement covers.
 
-    if "hitteprotocol" not in heading.lower():
+    A written-out period is preferred. Failing that, an announcement about
+    a single day is read as covering that day alone: one lone date is the
+    date it names, and "vandaag" is today - but only where the text is
+    known to be current. In an archived news item that word still says
+    "today" while meaning a day that has long passed.
+
+    Several dates without a period between them say nothing definite, so
+    they yield nothing.
+    """
+
+    starts, ends = parse_relative_date_range(text, today)
+
+    if ends is not None:
+        return starts, ends
+
+    dates = _SINGLE_DATE.findall(text)
+
+    if len(dates) == 1:
+        day, month = dates[0]
+
+        single = _relative_date(int(day), _MONTHS[month.lower()], today)
+
+        return single, single
+
+    if current and not dates and _TODAY_WORDING.search(text):
+        return today, today
+
+    return None, None
+
+
+def parse_heat_protocol_notice(
+    heading: str, today: date, *, current: bool = True
+) -> Notice | None:
+    """Parse the site-wide heat protocol banner, if present.
+
+    Matching is on "hitte" rather than the full word, since the same
+    announcement turns up as "hitteprotocol", "hitte-protocol" and
+    "hittegolf". That alone is never enough to produce a notice: without
+    both a readable period and a readable time, nothing is returned.
+
+    Args:
+        heading: the announcement's text.
+        today: the date to read a period relative to.
+        current: whether the text is known to be up to date. Pass False
+            for text that may be months old - an archived news item, say -
+            so wording that only makes sense today ("vandaag") is not
+            taken at face value.
+    """
+
+    if "hitte" not in heading.lower():
         return None
 
-    time_range = parse_time_range(heading)
-    ends = parse_relative_end_date(heading, today)
+    time_range = parse_time_range(heading) or parse_adjusted_hours(heading)
+    starts, ends = _heat_protocol_period(heading, today, current)
 
-    if time_range is None or ends is None:
+    if time_range == (None, None) or ends is None:
         LOGGER.debug(
             "Found a hitteprotocol heading but could not parse it: %s", heading
+        )
+        return None
+
+    if not _is_plausible_heat_protocol(starts, ends, today):
+        LOGGER.debug(
+            "Ignoring an implausibly long hitteprotocol period: %s to %s",
+            starts,
+            ends,
         )
         return None
 
@@ -522,20 +830,48 @@ def parse_heat_protocol_notice(heading: str, today: date) -> Notice | None:
         closed=False,
         opens=opens,
         closes=closes,
+        starts=starts,
         ends=ends,
     )
 
 
-def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | None:
-    """Parse a municipality-specific closure/renovation notice, if present."""
+def _is_plausible_heat_protocol(
+    starts: date | None, ends: date | None, today: date
+) -> bool:
+    """Return whether a heat protocol period is short enough to believe.
 
-    if not heading.lower().startswith("let op!"):
+    A heat protocol lasts days, not months. Without a start date the
+    notice applies from today, so an end date far ahead would hold the
+    adjusted hours in place for weeks on end - which is what a banner left
+    standing after the heat has passed produces, since its end date is then
+    read as next year's. Such a period is dropped rather than applied.
+    """
+
+    if ends is None:
+        return False
+
+    start = starts if starts is not None else today
+
+    return timedelta(0) <= (ends - start) <= timedelta(days=_MAX_HEAT_PROTOCOL_DAYS)
+
+
+def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | None:
+    """Parse a municipality-specific closure/renovation notice, if present.
+
+    The heading has to open with "Let op", whatever punctuation Cure puts
+    behind it. What the body then says about dates is read in three ways,
+    in descending order of how definite it is: the date behind a "Datum
+    sluiting" label, a list of dated entries, or a period the closure runs
+    for. A body naming none of those yields nothing at all.
+    """
+
+    if not _ATTENTION_WORDING.match(heading):
         return None
 
     combined_text = (heading + body_text).lower()
     reason = "verbouwing" if "verbouw" in combined_text else "werkzaamheden"
 
-    explicit_date = parse_explicit_closure_date(body_text)
+    explicit_date = parse_explicit_closure_date(body_text, today)
 
     if explicit_date is not None:
         return Notice(
@@ -545,7 +881,7 @@ def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | 
             starts=explicit_date if explicit_date > today else None,
         )
 
-    dated_list = parse_dated_list(body_text)
+    dated_list = parse_dated_list(body_text, today)
 
     if dated_list:
         return Notice(
@@ -553,6 +889,17 @@ def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | 
             title=heading,
             closed=True,
             dates=dated_list,
+        )
+
+    starts, ends = parse_relative_date_range(body_text, today)
+
+    if ends is not None:
+        return Notice(
+            reason=reason,
+            title=heading,
+            closed=True,
+            starts=starts,
+            ends=ends,
         )
 
     LOGGER.debug(
