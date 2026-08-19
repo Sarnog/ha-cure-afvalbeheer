@@ -102,6 +102,9 @@ wijzigingsgeschiedenis per versie.
 
 ## Installatie
 
+**Vereist:** Home Assistant **2024.6** of nieuwer. De integratie gebruikt
+`entry.runtime_data` met een getypeerde config entry, die sinds 2024.6 bestaat.
+
 Via HACS:
 
 1. Voeg deze repository toe als Custom Repository.
@@ -525,6 +528,9 @@ See [ROADMAP.md](ROADMAP.md) for future ideas and the
 per-version change history.
 
 ## Installation
+
+**Requires:** Home Assistant **2024.6** or newer. The integration uses
+`entry.runtime_data` with a typed config entry, which exists since 2024.6.
 
 Via HACS:
 
