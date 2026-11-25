@@ -175,10 +175,10 @@ content: >-
   {#- Is de milieustraat op dit moment daadwerkelijk open? -#}
   {%- set nu_open = vandaag is not none and not vandaag.closed
         and vandaag.opens is not none and vandaag.closes is not none
-        and now() >= today_at(vandaag.opens) and now() <= today_at(vandaag.closes) -%}
+        and now() >= today_at(vandaag.opens) and now() < today_at(vandaag.closes) -%}
   {#- Sluitingstijd voorbij? Dan geldt vandaag als gesloten -#}
   {%- set na_sluiting = vandaag is not none and not vandaag.closed and
-  vandaag.closes is not none and now() > today_at(vandaag.closes) -%}
+  vandaag.closes is not none and now() >= today_at(vandaag.closes) -%}
   {#- Alleen de sensor die nu telt hoeft een geldig tijdstip te hebben; zo niet:
   regel weglaten -#}
   {%- set d_open = as_datetime(s_open, none) -%}
@@ -605,10 +605,10 @@ content: >-
   {#- Is the recycling centre actually open right now? -#}
   {%- set now_open = today is not none and not today.closed
         and today.opens is not none and today.closes is not none
-        and now() >= today_at(today.opens) and now() <= today_at(today.closes) -%}
+        and now() >= today_at(today.opens) and now() < today_at(today.closes) -%}
   {#- Past closing time? Then today counts as closed -#}
   {%- set past_closing = today is not none and not today.closed and
-  today.closes is not none and now() > today_at(today.closes) -%}
+  today.closes is not none and now() >= today_at(today.closes) -%}
   {#- Only the sensor that currently matters needs a valid timestamp; skip the
   line if not -#}
   {%- set d_open = as_datetime(s_open, none) -%}
