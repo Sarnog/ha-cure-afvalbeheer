@@ -46,6 +46,10 @@
     }
   },
   "issues": {
+    "unreadable_website_content": {
+      "title": "Website partly unreadable",
+      "description": "Part of the Cure website for {municipality} could not be read: opening hours, notices or locations. The sensors may therefore differ from what the website says. Check the website itself while this notice is shown. What does not add up:\n\n{details}\n\nPlease report this via the integration's issue tracker and attach the diagnostics download."
+    },
     "no_locations_found": {
       "title": "No recycling centres found anymore",
       "description": "The integration could no longer find a single recycling centre on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. Please report this via the integration's issue tracker and attach the diagnostics download."
@@ -53,10 +57,6 @@
     "no_opening_hours_found": {
       "title": "No opening hours found anymore",
       "description": "The integration could no longer find any opening hours on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. While that lasts the integration keeps the last known opening hours, so the times shown may be out of date. Please report this via the integration's issue tracker and attach the diagnostics download."
-    },
-    "unreadable_website_content": {
-      "title": "Website partly unreadable",
-      "description": "Part of the Cure website for {municipality} could not be read: opening hours, notices or locations. The sensors may therefore differ from what the website says. Check the website itself while this notice is shown. What does not add up:\n\n{details}\n\nPlease report this via the integration's issue tracker and attach the diagnostics download."
     }
   }
 }
