@@ -1015,3 +1015,81 @@ def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | 
     )
 
     return None
+
+
+# The words Cure puts in front of the date a new set of regular hours
+# starts on ("Vanaf dinsdag 1 december 2026", "Per 1 januari 2027",
+# "Met ingang van 01-03-2027"). The date has to follow within a few words,
+# which keeps "per bezoek" or "vanaf 10:00" from counting.
+_EFFECTIVE_FROM = re.compile(
+    r"\b(?:vanaf|per|met ingang van|m\.?\s?i\.?\s?v\.?)\s+(?P<rest>.{0,40})",
+    re.IGNORECASE,
+)
+
+# The words in front of the last date a set of hours applies to
+# ("Openingstijden tot en met 30 november 2026").
+_EFFECTIVE_UNTIL = re.compile(
+    r"\b(?:tot en met|t/m)\s+(?P<rest>.{0,40})",
+    re.IGNORECASE,
+)
+
+# A date right at the start of a text, written in words or in numbers,
+# with an optional weekday in front of it.
+_LEADING_DATE = re.compile(
+    rf"^\s*(?:(?:{_WEEKDAY_PATTERN})\s+)?"
+    rf"(?:\d{{1,2}}\s+(?:{_MONTH_PATTERN})\b|\d{{1,2}}[-/.]\d{{1,2}}[-/.]\d{{4}})",
+    re.IGNORECASE,
+)
+
+# A line that only announces when something starts: the date marker, its
+# punctuation and nothing else of substance ("Vanaf 1 december 2026:").
+_EFFECTIVE_WORDING = re.compile(
+    r"^\s*(?:vanaf|per|met ingang van|m\.?\s?i\.?\s?v\.?)\b", re.IGNORECASE
+)
+
+
+def _date_behind(pattern: re.Pattern[str], text: str, today: date) -> date | None:
+    """Return the date written right behind a pattern's words, if any."""
+
+    for match in pattern.finditer(text):
+        rest = match.group("rest")
+
+        # Only a date at the very start of the text behind the words
+        # counts, so "per bezoek, open 1 december" is not read as one.
+        if _LEADING_DATE.match(rest) is None:
+            continue
+
+        numeric = parse_numeric_date(rest)
+
+        if numeric is not None:
+            return numeric
+
+        written = _first_written_date(rest, today)
+
+        if written is not None:
+            return written
+
+    return None
+
+
+def parse_effective_from(text: str, today: date) -> date | None:
+    """Return the date a set of hours starts on ("Vanaf 1 december 2026")."""
+
+    return _date_behind(_EFFECTIVE_FROM, text, today)
+
+
+def parse_effective_until(text: str, today: date) -> date | None:
+    """Return the last date a set of hours applies to ("t/m 30 november")."""
+
+    return _date_behind(_EFFECTIVE_UNTIL, text, today)
+
+
+def announces_effective_date(text: str) -> bool:
+    """Return whether a line opens like a "Vanaf <datum>" announcement.
+
+    Used to notice a start date that is there but could not be read: the
+    line clearly means to announce one, so ignoring it silently would be
+    the same mistake as missing the new hours themselves.
+    """
+
+    return _EFFECTIVE_WORDING.match(text) is not None

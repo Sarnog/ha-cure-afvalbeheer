@@ -403,6 +403,22 @@ de opmaak is veranderd - en beide blijven staan zolang de integratie op
 laatst bekende gegevens terugvalt, zodat verouderde data nooit stilzwijgend
 voor actueel doorgaat.
 
+Een derde melding, `unreadable_opening_hours` (ernst: waarschuwing), gaat aan
+zodra de parser in de openingstijden iets tegenkomt dat hij niet kan lezen:
+een regel met een tijd of "gesloten" die niet als openingstijd te lezen is,
+een "Vanaf ..."-regel zonder leesbare datum, een ingangsdatum zonder tijden,
+tijden die volgens de pagina zelf verlopen zijn ("tot en met 30 november"),
+of een aankondiging elders op de pagina ("Vanaf 01 december 2026
+openingstijden ...: Ma t/m vr 10:00-17:00, ...") die niet overeenkomt met de
+tijden in het blok "Openingstijden". De melding somt op wat er mis is; de
+parser geeft die lijst door via `CureData.hours_warnings`. Zo wordt een
+herschreven pagina gemeld in plaats van stilzwijgend genegeerd.
+
+Aangekondigde nieuwe tijden ("Vanaf dinsdag 1 december 2026:" met de nieuwe
+regels eronder, of een eigen kopje "Openingstijden vanaf ...") komen in
+`Location.scheduled` terecht met hun ingangsdatum; `hours_for_date` gebruikt
+per datum de set die op die dag geldt.
+
 ---
 
 # Logging
@@ -833,6 +849,22 @@ come back without opening hours. Both report the same kind of problem - the
 layout has changed - and both stay up for as long as the integration is
 falling back on last known data, so stale data is never silently passed off
 as current.
+
+A third notification, `unreadable_opening_hours` (severity: warning), goes up
+whenever the parser meets something in the opening hours it cannot read: a
+line with a time or "gesloten" that does not read as opening hours, a
+"Vanaf ..." line without a readable date, a start date without hours, hours
+the page itself says have expired ("tot en met 30 november"), or an
+announcement elsewhere on the page ("Vanaf 01 december 2026 openingstijden
+...: Ma t/m vr 10:00-17:00, ...") that disagrees with the hours in the
+"Openingstijden" block. The notification lists what is wrong; the parser
+hands that list over in `CureData.hours_warnings`. A reworded page is thus
+reported instead of silently ignored.
+
+Announced new hours ("Vanaf dinsdag 1 december 2026:" with the new lines
+below it, or a heading of their own, "Openingstijden vanaf ...") end up in
+`Location.scheduled` with their start date; `hours_for_date` uses, per date,
+the set that applies on that day.
 
 ---
 

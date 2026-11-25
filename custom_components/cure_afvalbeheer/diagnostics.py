@@ -28,6 +28,13 @@ def _serialize_location(location: Location) -> dict[str, Any]:
         "name": location.name,
         "address": location.address,
         "hours": [_serialize_hours(hours) for hours in location.hours],
+        "scheduled": [
+            {
+                "starts": scheduled.starts.isoformat(),
+                "hours": [_serialize_hours(hours) for hours in scheduled.hours],
+            }
+            for scheduled in location.scheduled
+        ],
     }
 
 
@@ -53,6 +60,7 @@ def _serialize_data(data: CureData) -> dict[str, Any]:
     return {
         "locations": [_serialize_location(location) for location in data.locations],
         "notices": [_serialize_notice(notice) for notice in data.notices],
+        "hours_warnings": list(data.hours_warnings),
     }
 
 
