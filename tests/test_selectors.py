@@ -1,7 +1,7 @@
 import pytest
 from bs4 import BeautifulSoup
 
-from custom_components.cure_afvalbeheer import selectors
+from custom_components.cure_afvalbeheer.parsing import selectors
 
 
 def _lines(blocks: list[tuple[str, list[str]]]) -> list[str]:

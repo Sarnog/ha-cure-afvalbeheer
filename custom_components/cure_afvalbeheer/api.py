@@ -10,7 +10,7 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 from .const import BASE_URL
 from .exceptions import CureApiError
 from .models import CureData
-from .parser import CureParser
+from .parsing import CureParser
 
 # Cure's pages are static HTML of well under a megabyte. A request taking
 # longer than this is hanging rather than working, and holding the

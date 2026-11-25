@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.cure_afvalbeheer.parser import CureParser
+from custom_components.cure_afvalbeheer.parsing.page import CureParser
 
 _TODAY = date(2026, 11, 25)
 

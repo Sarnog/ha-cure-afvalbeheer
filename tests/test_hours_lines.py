@@ -1,13 +1,13 @@
 import pytest
 
 from custom_components.cure_afvalbeheer.exceptions import ParserError
-from custom_components.cure_afvalbeheer.parsers import (
+from custom_components.cure_afvalbeheer.parsing.hours_lines import (
     days_in_label,
     is_opening_hours_line,
     parse_opening_hours,
     parse_opening_hours_line,
-    parse_time_range,
 )
+from custom_components.cure_afvalbeheer.parsing.times import parse_time_range
 from custom_components.cure_afvalbeheer.weekday import Weekday
 
 _NBSP = "\xa0"

@@ -36,12 +36,6 @@ def headings(soup: BeautifulSoup) -> list[Tag]:
     return soup.find_all(list(_HEADING_LEVELS))
 
 
-def main_content(soup: BeautifulSoup) -> Tag | None:
-    """Return the main page content."""
-
-    return soup.find("main")
-
-
 def all_headings(soup: BeautifulSoup) -> list[str]:
     """Return all heading text."""
 

@@ -1,8 +1,9 @@
 from datetime import date
 from pathlib import Path
 
-from custom_components.cure_afvalbeheer.models import Location
-from custom_components.cure_afvalbeheer.parser import CureParser, location_hint_for
+from custom_components.cure_afvalbeheer.models import CureData, Location
+from custom_components.cure_afvalbeheer.parsing.locations import location_hint_for
+from custom_components.cure_afvalbeheer.parsing.page import CureParser
 from custom_components.cure_afvalbeheer.weekday import Weekday
 
 
@@ -373,3 +374,38 @@ def test_opening_hours_falls_back_to_the_first_block_it_cannot_place(caplog):
 
     assert (hours[0].opens, hours[0].closes) == ("09:00", "16:00")
     assert "could not tell which one applies today" in caplog.text
+
+
+def test_parse_returns_cure_data():
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    parser = CureParser(html)
+
+    result = parser.parse()
+
+    assert isinstance(result, CureData)
+
+    assert len(result.locations) == 2
+
+    assert result.locations[0].name == "Milieustraat Acht"
+    assert result.locations[0].address == "Achtseweg Noord 41 5651 GG Eindhoven"
+
+    assert result.locations[1].name == "Milieustraat Lodewijkstraat"
+    assert result.locations[1].address == "Lodewijkstraat 9 5652 AC Eindhoven"
+
+
+def test_opening_hours():
+    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
+        encoding="utf-8"
+    )
+
+    parser = CureParser(html)
+
+    hours = parser.opening_hours()
+
+    assert len(hours) == 7
+    assert hours[0].day is Weekday.MONDAY
+    assert hours[-2].day is Weekday.SATURDAY
+    assert hours[-1].day is Weekday.HOLIDAY

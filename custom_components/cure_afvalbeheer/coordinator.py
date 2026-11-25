@@ -21,7 +21,7 @@ from .const import (
 from .exceptions import CureApiError
 from .logger import LOGGER
 from .models import CureData, Location
-from .parser import location_hint_for
+from .parsing import location_hint_for
 
 
 class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):

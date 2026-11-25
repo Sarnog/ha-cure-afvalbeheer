@@ -15,12 +15,19 @@ Internet
 HTTP-client
     │
     ▼
-Selectors
+parsing/ (van HTML naar Models; elke laag gebruikt alleen de lagen eronder)
+    page.py           CureParser: het enige aanspreekpunt voor de rest
+    locations.py      locaties en adressen
+    regular_hours.py  het weekrooster, ook aangekondigde latere tijden
+    notices.py        tijdelijke afwijkingen en onleesbare berichten
+    selectors.py      de juiste stukken HTML vinden
+    hours_lines.py    openingstijden-regels ("Maandag: 08:30 tot 17:00")
+    closing_days.py   de lijst met sluitingsdagen
+    heat_protocol.py  het hitteprotocol
+    attention.py      "Let op"-mededelingen (sluitingen, aangepaste tijden)
+    dates.py          datums in vrije tekst
+    times.py          kloktijden en tijdbereiken
     │
-    ▼
-Parser ──gebruikt──> parsers.py (openingstijden-regels)
-    │            notices.py (parsing van vrije-tekst-afwijkingen)
-    │            times.py   (kloktijden, gedeeld door beide)
     ▼
 Models (incl. Notice)
     │
@@ -70,8 +77,8 @@ Waar mogelijk hebben selectors een structurele fallback naast de
 inhoudelijke check: als een specifieke tag/attribuut verdwijnt door een
 opmaakwijziging, blijft het onderscheidende kenmerk (de kop-tekst) leidend
 in plaats van meteen `None` terug te geven. Zie `location_addresses()`'s
-h3-naar-h1-fallback in `parser.py`, en `heading_with_text`/
-`closure_notice_section` in `selectors.py`.
+h3-naar-h1-fallback in `parsing/page.py`, en `heading_with_text`/
+`closure_notice_section` in `parsing/selectors.py`.
 
 Kop-teksten worden nooit exact vergeleken wanneer Cure er variabele
 onderdelen in zet. `closing_days_blocks` matcht daarom alleen op het woord
@@ -118,7 +125,7 @@ Verantwoordelijk voor het omzetten van HTML-elementen naar Python-modellen.
 
 Mag nooit CSS-selectors bevatten.
 
-Gebruikt alleen functies uit `selectors.py`.
+Gebruikt alleen functies uit `parsing/selectors.py`.
 
 ---
 
@@ -193,7 +200,7 @@ is.
 
 # Openingstijden
 
-`parsers.py` leest de regels onder de kop "Openingstijden". Anders dan de
+`parsing/hours_lines.py` leest de regels onder de kop "Openingstijden". Anders dan de
 meldingen hebben die een vaste vorm - een dag-label, een waarde - maar
 binnen die vorm wordt alles ruim gelezen, want juist de bewoording van het
 label en de leestekens tussen de tijden wijzigt Cure zonder aankondiging.
@@ -230,7 +237,7 @@ betekent wintertijden in augustus. Past er geen enkel blok, of meer dan
 
 # Times
 
-`times.py` bevat wat `parsers.py` en `notices.py` allebei over kloktijden
+`parsing/times.py` bevat wat `parsing/hours_lines.py` en de vrije-tekstlezers allebei over kloktijden
 moeten weten: hoe uur en minuut gescheiden worden, hoe de twee kanten van
 een reeks gescheiden worden, en het omzetten van een geschreven tijd naar
 één "HH:MM"-waarde (met afwijzing van onmogelijke tijden). Het staat apart
@@ -241,15 +248,18 @@ accepteren.
 
 # Notices
 
-`notices.py` haalt tijdelijke afwijkingen (hitteprotocol, sluitingen,
-verbouwingen, de sluitingsdagen rond feestdagen) uit vrije Nederlandse
-tekst op de milieustraat-pagina.
+De vrije-tekstlezers halen tijdelijke afwijkingen uit vrije Nederlandse
+tekst op de milieustraat-pagina, elk soort bericht in een eigen module:
+`parsing/heat_protocol.py` (hitteprotocol), `parsing/attention.py`
+("Let op"-mededelingen: sluitingen, verbouwingen) en
+`parsing/closing_days.py` (de sluitingsdagen rond feestdagen). Datums lezen
+ze allemaal via `parsing/dates.py`.
 
 Bevat geen BeautifulSoup/HTML-code en geen Home Assistant-imports - het
 neemt alleen platte tekst aan en geeft een `Notice` terug (of `None` als de
-tekst geen herkend patroon matcht). `parser.py` is de enige aanroeper: die
-selecteert de relevante kop-/inhoudstekst via `selectors.py` en geeft die
-door aan `notices.py`.
+tekst geen herkend patroon matcht). `parsing/page.py` is de enige aanroeper: die
+selecteert de relevante kop-/inhoudstekst via `parsing/selectors.py` en geeft die
+door aan de juiste lezer (`parsing/notices.py` regelt dat).
 
 Het hitteprotocol wordt aangekondigd voor een periode, en Cure schrijft die
 periode elke keer anders op: "tot en met donderdag 16 juli", "van 13 t/m 15
@@ -266,7 +276,7 @@ Noemt de tekst helemaal geen periode, dan telt één losse datum als die ene
 dag, en "vandaag" als vandaag - dat laatste alleen voor de banner-kop, die
 per definitie actueel is. In een nieuwsbericht uit het archief staat
 "vandaag" er immers nog steeds terwijl de dag allang voorbij is; daarvoor
-geeft `parser.py` `current=False` mee. Herkend wordt op "hitte" in plaats
+geeft `parsing/page.py` `current=False` mee. Herkend wordt op "hitte" in plaats
 van het hele woord, omdat dezelfde aankondiging als "hitteprotocol",
 "hitte-protocol" en "hittegolf" langskomt - dat alleen levert nooit een
 melding op, want zonder leesbare periode én leesbare tijd komt er niets uit.
@@ -491,12 +501,19 @@ Internet
 HTTP Client
     │
     ▼
-Selectors
+parsing/ (from HTML to Models; each layer uses only the ones below it)
+    page.py           CureParser: the one entry point for the rest
+    locations.py      locations and addresses
+    regular_hours.py  the weekly schedule, incl. announced later hours
+    notices.py        temporary deviations and unreadable messages
+    selectors.py      finding the right parts of the HTML
+    hours_lines.py    opening hours lines ("Maandag: 08:30 tot 17:00")
+    closing_days.py   the list of closing days
+    heat_protocol.py  the heat protocol
+    attention.py      "Let op" announcements (closures, changed hours)
+    dates.py          dates in free text
+    times.py          clock times and time ranges
     │
-    ▼
-Parser ──uses──> parsers.py (opening hours lines)
-    │          notices.py (free-text deviation parsing)
-    │          times.py   (clock times, shared by both)
     ▼
 Models (incl. Notice)
     │
@@ -546,8 +563,8 @@ Where possible, selectors have a structural fallback alongside the
 content check: if a specific tag/attribute disappears due to a layout
 change, the distinguishing signal (the heading text) stays authoritative
 instead of immediately returning `None`. See `location_addresses()`'s
-h3-to-h1 fallback in `parser.py`, and `heading_with_text`/
-`closure_notice_section` in `selectors.py`.
+h3-to-h1 fallback in `parsing/page.py`, and `heading_with_text`/
+`closure_notice_section` in `parsing/selectors.py`.
 
 Heading text is never compared in full where Cure puts a variable part in
 it. `closing_days_blocks` therefore matches on the word "Sluitingsdagen"
@@ -592,7 +609,7 @@ Responsible for converting HTML elements into Python models.
 
 Must never contain CSS selectors.
 
-Uses only functions from `selectors.py`.
+Uses only functions from `parsing/selectors.py`.
 
 ---
 
@@ -665,7 +682,7 @@ no history for a value that has not changed.
 
 # Opening hours
 
-`parsers.py` reads the lines under the "Openingstijden" heading. Unlike
+`parsing/hours_lines.py` reads the lines under the "Openingstijden" heading. Unlike
 the notices these have a fixed shape - a day label, a value - but within
 that shape everything is matched loosely, because the wording of the label
 and the punctuation between the times are exactly what Cure changes
@@ -703,7 +720,7 @@ used and the log says so.
 
 # Times
 
-`times.py` holds what `parsers.py` and `notices.py` both need to know
+`parsing/times.py` holds what `parsing/hours_lines.py` and the free-text readers both need to know
 about clock times: how hour and minute are separated, how the two ends of
 a range are separated, and how a written time becomes one "HH:MM" value
 (rejecting impossible ones). It sits on its own so the two layers cannot
@@ -713,14 +730,18 @@ drift apart on which spellings they accept.
 
 # Notices
 
-`notices.py` extracts temporary deviations (heat protocol, closures,
-renovations, the closing days around public holidays) from free Dutch text
-found on the recycling centre page.
+The free-text readers extract temporary deviations from free Dutch text
+found on the recycling centre page, each kind of message in a module of
+its own: `parsing/heat_protocol.py` (heat protocol), `parsing/attention.py`
+("Let op" announcements: closures, renovations) and
+`parsing/closing_days.py` (the closing days around public holidays). All of
+them read dates through `parsing/dates.py`.
 
 Contains no BeautifulSoup/HTML code and no Home Assistant imports - it only
 takes plain strings and returns a `Notice` (or `None` when the text does not
-match a recognised pattern). `parser.py` is the only caller: it selects the
-relevant heading/body text via `selectors.py` and hands it to `notices.py`.
+match a recognised pattern). `parsing/page.py` is the only caller: it selects the
+relevant heading/body text via `parsing/selectors.py` and hands it to the
+right reader (`parsing/notices.py` takes care of that).
 
 A heat protocol is announced for a period, and Cure writes that period
 differently every time: "tot en met donderdag 16 juli", "van 13 t/m 15
@@ -736,7 +757,7 @@ month name behind the end date is exactly what keeps times out of this: in
 Where the text names no period at all, one lone date counts as that single
 day, and "vandaag" ("today") as today - the latter only for the banner
 heading, which is current by definition. In an archived news item that word
-still stands there long after the day has passed, so `parser.py` passes
+still stands there long after the day has passed, so `parsing/page.py` passes
 `current=False` for those. Matching is on "hitte" rather than the whole
 word, since the same announcement turns up as "hitteprotocol",
 "hitte-protocol" and "hittegolf" - which on its own never produces a

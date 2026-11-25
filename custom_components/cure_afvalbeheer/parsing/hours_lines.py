@@ -1,4 +1,4 @@
-"""Text parsers for Cure Afvalbeheer.
+"""The regular opening hours lines ("Maandag: 08:30 tot 17:00").
 
 The opening hours are the one part of the page written as a list of
 labelled lines ("Maandag: 08:30 tot 17:00"), so unlike the free-text
@@ -12,18 +12,11 @@ from __future__ import annotations
 
 import re
 
-from .exceptions import ParserError
-from .logger import LOGGER
-from .models import OpeningHours
-from .times import CLOCK_SEPARATOR, RANGE_SEPARATOR, hhmm
-from .weekday import Weekday
-
-_TIME_RANGE = re.compile(
-    rf"(?<!\d)(?P<open_hour>\d{{1,2}}){CLOCK_SEPARATOR}(?P<open_minute>\d{{2}})"
-    rf"\s*{RANGE_SEPARATOR}\s*"
-    rf"(?P<close_hour>\d{{1,2}}){CLOCK_SEPARATOR}(?P<close_minute>\d{{2}})(?!\d)",
-    re.IGNORECASE,
-)
+from ..exceptions import ParserError
+from ..logger import LOGGER
+from ..models import OpeningHours
+from ..weekday import Weekday
+from .times import RANGE_SEPARATOR, TIME_RANGE, parse_time_range
 
 # The days in the order a range runs through them. Sunday closes the week
 # here because Cure writes its week that way ("maandag t/m zondag").
@@ -146,23 +139,6 @@ def days_in_label(label: str) -> list[Weekday]:
     return days
 
 
-def parse_time_range(value: str) -> tuple[str, str] | None:
-    """Extract an opening and closing time from an opening hours value."""
-
-    match = _TIME_RANGE.search(value)
-
-    if match is None:
-        return None
-
-    opens = hhmm(match.group("open_hour"), match.group("open_minute"))
-    closes = hhmm(match.group("close_hour"), match.group("close_minute"))
-
-    if opens is None or closes is None:
-        return None
-
-    return opens, closes
-
-
 def _split_line(line: str) -> tuple[str, str] | None:
     """Split an opening hours line into its label and its value.
 
@@ -174,7 +150,7 @@ def _split_line(line: str) -> tuple[str, str] | None:
     still wins as the separator, so none of the label is carried into it.
     """
 
-    anchor = _TIME_RANGE.search(line) or _CLOSED_WORD.search(line)
+    anchor = TIME_RANGE.search(line) or _CLOSED_WORD.search(line)
 
     if anchor is None:
         return None
@@ -282,4 +258,4 @@ def mentions_hours(line: str) -> bool:
     with the website without anyone noticing.
     """
 
-    return bool(_TIME_RANGE.search(line) or _CLOSED_WORD.search(line))
+    return bool(TIME_RANGE.search(line) or _CLOSED_WORD.search(line))

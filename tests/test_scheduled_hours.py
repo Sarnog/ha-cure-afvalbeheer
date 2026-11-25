@@ -13,11 +13,11 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.cure_afvalbeheer.parser import CureParser
-from custom_components.cure_afvalbeheer.parsers import (
+from custom_components.cure_afvalbeheer.parsing.hours_lines import (
     is_opening_hours_line,
     parse_opening_hours_line,
 )
+from custom_components.cure_afvalbeheer.parsing.page import CureParser
 from custom_components.cure_afvalbeheer.schedule import resolve_day, resolve_upcoming
 from custom_components.cure_afvalbeheer.weekday import Weekday
 
