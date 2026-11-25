@@ -119,7 +119,7 @@ def _describe(hours: OpeningHours | None) -> str:
     return f"{hours.opens}-{hours.closes}"
 
 
-def hours_block(soup: BeautifulSoup, today: date) -> tuple[str, list[str]]:
+def _hours_block(soup: BeautifulSoup, today: date) -> tuple[str, list[str]]:
     """Return the opening hours block that applies today.
 
     A page carrying one block is the ordinary case. Should Cure ever
@@ -196,7 +196,7 @@ def _periods(soup: BeautifulSoup, today: date) -> tuple[list[_Period], list[str]
     once went missing.
     """
 
-    heading, lines = hours_block(soup, today)
+    heading, lines = _hours_block(soup, today)
 
     first = _Period(
         starts=parse_effective_from(heading, today),

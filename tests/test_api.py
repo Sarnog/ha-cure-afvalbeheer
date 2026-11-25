@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -10,14 +9,13 @@ from custom_components.cure_afvalbeheer.api import (
     CureApiError,
 )
 from custom_components.cure_afvalbeheer.models import CureData
+from tests.hulp import read_fixture
 
 
 def test_parse_html() -> None:
     """Test parsing HTML into CureData."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     session = Mock(spec=ClientSession)
     client = CureApiClient(session)
@@ -95,9 +93,7 @@ async def test_fetch_html_raises_on_a_timeout() -> None:
 async def test_fetch_milieustraat() -> None:
     """Test fetching and parsing the milieustraat page."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     session = Mock(spec=ClientSession)
 

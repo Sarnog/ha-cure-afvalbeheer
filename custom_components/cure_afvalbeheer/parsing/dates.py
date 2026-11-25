@@ -298,12 +298,6 @@ def parse_relative_date_range(
     return None, end
 
 
-def parse_relative_end_date(text: str, today: date) -> date | None:
-    """Extract the end date of a currently active notice, if it has one."""
-
-    return parse_relative_date_range(text, today)[1]
-
-
 def parse_explicit_closure_date(text: str, today: date | None = None) -> date | None:
     """Extract the date behind a "Datum sluiting:" label.
 

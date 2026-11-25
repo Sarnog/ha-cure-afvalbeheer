@@ -14,12 +14,10 @@ from datetime import date
 from bs4 import BeautifulSoup
 
 from ..logger import LOGGER
-from ..models import CureData, Location, Notice, OpeningHours, ScheduledHours
-from . import selectors
-from .hours_lines import is_opening_hours_line
+from ..models import CureData, Location, Notice, OpeningHours
 from .locations import location_warnings, read_addresses
 from .notices import heat_protocol_notice, read_notices
-from .regular_hours import RegularHours, hours_block, read_regular_hours
+from .regular_hours import RegularHours, read_regular_hours
 
 
 class CureParser:
@@ -34,25 +32,6 @@ class CureParser:
 
     # --- Page in general -------------------------------------------------
 
-    def page_title(self) -> str:
-        """Return the page title."""
-
-        title = selectors.page_title(self._soup)
-
-        LOGGER.debug("Page title: %s", title)
-
-        return title
-
-    def headings(self) -> list[str]:
-        """Return all headings."""
-
-        return selectors.all_headings(self._soup)
-
-    def location_name(self) -> str:
-        """Return the location name."""
-
-        return selectors.location_name(self._soup)
-
     # --- Regular opening hours -------------------------------------------
 
     def _regular_hours(self, today: date | None) -> RegularHours:
@@ -60,28 +39,10 @@ class CureParser:
 
         return read_regular_hours(self._soup, today or date.today())
 
-    def opening_hours_lines(self, today: date | None = None) -> list[str]:
-        """Return only valid opening hours lines.
-
-        Only the lines under the "Openingstijden" heading itself are
-        considered: the closing days share one container with them, and a
-        dated line from that list ("Zaterdag 26 december: 10:00 tot 14:00")
-        would otherwise be filed as that weekday's regular hours.
-        """
-
-        _, lines = hours_block(self._soup, today or date.today())
-
-        return [line for line in lines if is_opening_hours_line(line)]
-
     def opening_hours(self, today: date | None = None) -> list[OpeningHours]:
         """Return the regular opening hours that apply today."""
 
         return self._regular_hours(today).current
-
-    def scheduled_hours(self, today: date | None = None) -> list[ScheduledHours]:
-        """Return announced sets of regular hours that start after today."""
-
-        return self._regular_hours(today).scheduled
 
     def hours_warnings(self, today: date | None = None) -> list[str]:
         """Return what in the opening hours section could not be read."""
@@ -135,15 +96,6 @@ class CureParser:
         """Parse temporary deviations (heat protocol, closures, closing days)."""
 
         return read_notices(self._soup, locations, today or date.today())[0]
-
-    def notice_warnings(
-        self,
-        locations: list[Location],
-        today: date | None = None,
-    ) -> list[str]:
-        """Return the messages on the page that could not be read."""
-
-        return read_notices(self._soup, locations, today or date.today())[1]
 
     # --- Everything at once ----------------------------------------------
 

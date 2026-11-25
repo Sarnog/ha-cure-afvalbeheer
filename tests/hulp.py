@@ -1,5 +1,14 @@
 """Gedeelde hulpjes voor de tests: echte teksten van cure-afvalbeheer.nl."""
 
+from pathlib import Path
+
+
+def read_fixture(name: str) -> str:
+    """Return a saved page from tests/fixtures as text."""
+
+    return (Path("tests/fixtures") / name).read_text(encoding="utf-8")
+
+
 EINDHOVEN_CLOSURE_BODY = (
     "Let op! Lodewijkstraat wordt verbouwd Kijk voor alle informatie over onze "
     "verbouwing op deze pagina Kom naar onze milieustraat in Acht. Achtseweg "

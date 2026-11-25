@@ -8,7 +8,6 @@ from custom_components.cure_afvalbeheer.parsing.dates import (
     parse_dated_list,
     parse_explicit_closure_date,
     parse_relative_date_range,
-    parse_relative_end_date,
     season_covers,
 )
 from tests.hulp import (
@@ -20,22 +19,24 @@ from tests.hulp import (
 )
 
 
-def test_parse_relative_end_date():
-    result = parse_relative_end_date(HEAT_PROTOCOL_HEADING, date(2026, 7, 10))
+def test_parse_relative_date_range_end():
+    result = parse_relative_date_range(HEAT_PROTOCOL_HEADING, date(2026, 7, 10))[1]
 
     assert result == date(2026, 7, 16)
 
 
-def test_parse_relative_end_date_rolls_over_to_next_year():
+def test_parse_relative_date_range_end_rolls_over_to_next_year():
     # "16 juli" relative to a "today" far past it (>30 days) should roll
     # forward to next year rather than being treated as long overdue.
-    result = parse_relative_end_date(HEAT_PROTOCOL_HEADING, date(2026, 12, 1))
+    result = parse_relative_date_range(HEAT_PROTOCOL_HEADING, date(2026, 12, 1))[1]
 
     assert result == date(2027, 7, 16)
 
 
-def test_parse_relative_end_date_reads_a_slash_range():
-    result = parse_relative_end_date(HEAT_PROTOCOL_RANGE_HEADING, date(2026, 8, 14))
+def test_parse_relative_date_range_end_reads_a_slash_range():
+    result = parse_relative_date_range(HEAT_PROTOCOL_RANGE_HEADING, date(2026, 8, 14))[
+        1
+    ]
 
     assert result == date(2026, 8, 15)
 

@@ -8,11 +8,11 @@ content is covered, and that a normal page raises nothing.
 """
 
 from datetime import date
-from pathlib import Path
 
 import pytest
 
 from custom_components.cure_afvalbeheer.parsing.page import CureParser
+from tests.hulp import read_fixture
 
 _TODAY = date(2026, 11, 25)
 
@@ -50,7 +50,7 @@ def _page(*blocks: str, addresses: str = _ADDRESSES) -> str:
 def test_the_real_page_raises_no_warnings(fixture, today):
     """A warning that is always there gets ignored; a normal page has none."""
 
-    html = Path(f"tests/fixtures/{fixture}.html").read_text(encoding="utf-8")
+    html = read_fixture(f"{fixture}.html")
 
     assert CureParser(html).parse(today).warnings == []
 

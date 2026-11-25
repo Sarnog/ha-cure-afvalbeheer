@@ -21,33 +21,10 @@ _CLOSING_DAYS_HEADINGS = ("sluitingsda", "gesloten dagen", "feestdagen")
 _ATTENTION_HEADING = re.compile(r"^let\s*op\b", re.IGNORECASE)
 
 
-def page_title(soup: BeautifulSoup) -> str:
-    """Return de paginatitel."""
-
-    if soup.title:
-        return soup.title.get_text(strip=True)
-
-    return ""
-
-
 def headings(soup: BeautifulSoup) -> list[Tag]:
     """Return alle headings."""
 
     return soup.find_all(list(_HEADING_LEVELS))
-
-
-def all_headings(soup: BeautifulSoup) -> list[str]:
-    """Return all heading text."""
-
-    result: list[str] = []
-
-    for heading in headings(soup):
-        text = heading.get_text(" ", strip=True)
-
-        if text:
-            result.append(text)
-
-    return result
 
 
 def blocks_under_heading(

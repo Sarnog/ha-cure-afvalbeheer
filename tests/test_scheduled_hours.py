@@ -9,7 +9,6 @@ cannot be read ends up as a warning rather than being ignored.
 """
 
 from datetime import date
-from pathlib import Path
 
 import pytest
 
@@ -20,8 +19,9 @@ from custom_components.cure_afvalbeheer.parsing.hours_lines import (
 from custom_components.cure_afvalbeheer.parsing.page import CureParser
 from custom_components.cure_afvalbeheer.schedule import resolve_day, resolve_upcoming
 from custom_components.cure_afvalbeheer.weekday import Weekday
+from tests.hulp import read_fixture
 
-_FIXTURE = Path("tests/fixtures/milieustraat_eindhoven_nieuwe_tijden.html")
+_FIXTURE = "milieustraat_eindhoven_nieuwe_tijden.html"
 
 _BEFORE = date(2026, 11, 25)  # woensdag, oude tijden
 _AFTER = date(2026, 12, 3)  # donderdag, nieuwe tijden
@@ -55,7 +55,7 @@ def _times(hours) -> dict[Weekday, tuple[str | None, str | None, bool]]:
 
 
 def test_fixture_keeps_current_hours_until_the_start_date():
-    data = CureParser(_FIXTURE.read_text(encoding="utf-8")).parse(_BEFORE)
+    data = CureParser(read_fixture(_FIXTURE)).parse(_BEFORE)
 
     location = data.locations[0]
 
@@ -67,7 +67,7 @@ def test_fixture_keeps_current_hours_until_the_start_date():
 def test_fixture_shows_new_hours_from_the_start_date():
     """The exact situation from the bug report: 1 December must say 10:00."""
 
-    data = CureParser(_FIXTURE.read_text(encoding="utf-8")).parse(_BEFORE)
+    data = CureParser(read_fixture(_FIXTURE)).parse(_BEFORE)
 
     location = data.locations[0]
 
@@ -89,7 +89,7 @@ def test_fixture_shows_new_hours_from_the_start_date():
 
 
 def test_fixture_after_the_start_date_uses_the_new_hours_as_current():
-    data = CureParser(_FIXTURE.read_text(encoding="utf-8")).parse(_AFTER)
+    data = CureParser(read_fixture(_FIXTURE)).parse(_AFTER)
 
     location = data.locations[0]
 
