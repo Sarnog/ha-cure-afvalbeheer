@@ -237,7 +237,10 @@ class CureLocationSensor(_CureLocationEntity, SensorEntity):
 
         current_time = now.strftime("%H:%M")
 
-        if today.opens <= current_time <= today.closes:
+        # The closing time itself counts as closed, matching the "volgende
+        # gesloten" sensor: at 17:00 sharp that one already points at the
+        # next day, so this one must no longer say "open".
+        if today.opens <= current_time < today.closes:
             return "open"
 
         return "closed"

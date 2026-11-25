@@ -102,8 +102,8 @@ wijzigingsgeschiedenis per versie.
 
 ## Installatie
 
-**Vereist:** Home Assistant **2024.6** of nieuwer. De integratie gebruikt
-`entry.runtime_data` met een getypeerde config entry, die sinds 2024.6 bestaat.
+**Vereist:** Home Assistant **2025.8** of nieuwer. De opties-flow gebruikt
+`OptionsFlowWithReload`, dat sinds 2025.8 in Home Assistant zit.
 
 Via HACS:
 
@@ -132,7 +132,7 @@ Elke milieustraat krijgt vijf sensoren:
   **`..._reden_morgen`** — leeg (`""`) als er geen afwijking is, anders de
   reden. Welke redenen er zijn, staat in [Redenen](#redenen).
 - **`sensor.<device>_<milieustraat>_volgende_open`** en
-  **`..._volgende_close`** — timestamp van de eerstvolgende keer dat de
+  **`..._volgende_gesloten`** — timestamp van de eerstvolgende keer dat de
   milieustraat open respectievelijk dicht gaat, binnen het ingestelde
   vooruitkijkvenster (anders `unknown`).
 
@@ -529,8 +529,8 @@ per-version change history.
 
 ## Installation
 
-**Requires:** Home Assistant **2024.6** or newer. The integration uses
-`entry.runtime_data` with a typed config entry, which exists since 2024.6.
+**Requires:** Home Assistant **2025.8** or newer. The options flow uses
+`OptionsFlowWithReload`, which Home Assistant has shipped since 2025.8.
 
 Via HACS:
 
@@ -561,7 +561,7 @@ Each recycling centre gets five sensors:
   the reason. See [Reasons](#reasons) for the full list. These values are
   always Dutch, since that is what the integration itself produces.
 - **`sensor.<device>_<milieustraat>_volgende_open`** and
-  **`..._volgende_close`** — timestamp of the next time the recycling
+  **`..._volgende_gesloten`** — timestamp of the next time the recycling
   centre opens and closes respectively, within the configured forecast
   window (otherwise `unknown`).
 

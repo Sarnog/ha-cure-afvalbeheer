@@ -351,7 +351,7 @@ regel daarnaast een sluitingswoord, dan wint de sluiting alsnog.
 
 `schedule.py` bepaalt de openingstijden voor een specifieke datum.
 
-`hours_for_date`/`upcoming_hours` lezen alleen het reguliere weekrooster.
+`hours_for_date` leest alleen het reguliere weekrooster.
 `resolve_day`/`resolve_upcoming` passen daarnaast elke `Notice` toe die bij
 die datum en locatie hoort, en leveren een `ResolvedDay` met een
 `reason`-veld op zodat entiteiten kunnen laten zien *waarom* een dag afwijkt
@@ -785,7 +785,7 @@ being shut, the closure wins after all.
 
 `schedule.py` resolves the opening hours for a specific date.
 
-`hours_for_date`/`upcoming_hours` read only the regular weekly schedule.
+`hours_for_date` reads only the regular weekly schedule.
 `resolve_day`/`resolve_upcoming` additionally apply any `Notice`s that match
 that date and location, producing a `ResolvedDay` with a `reason` field so
 entities can show *why* a day deviates from the regular schedule.

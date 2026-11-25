@@ -51,8 +51,8 @@
       "description": "De integratie kon geen enkele milieustraat meer vinden op de Cure-website voor {municipality}. Dit duidt meestal op een wijziging in de website-opmaak waardoor de parser niet meer werkt. Meld dit alsjeblieft via de issue tracker van de integratie en voeg de diagnostics-download toe."
     },
     "no_opening_hours_found": {
-      "title": "No opening hours found anymore",
-      "description": "The integration could no longer find any opening hours on the Cure website for {municipality}. This usually means the website layout has changed and the parser needs an update. While that lasts the integration keeps the last known opening hours, so the times shown may be out of date. Please report this via the integration's issue tracker and attach the diagnostics download."
+      "title": "Geen openingstijden meer gevonden",
+      "description": "De integratie kon geen openingstijden meer vinden op de Cure-website voor {municipality}. Dit duidt meestal op een wijziging in de website-opmaak waardoor de parser niet meer werkt. Zolang dit speelt houdt de integratie de laatst bekende openingstijden aan, dus de getoonde tijden kunnen verouderd zijn. Meld dit alsjeblieft via de issue tracker van de integratie en voeg de diagnostics-download toe."
     }
   }
 }

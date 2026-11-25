@@ -36,22 +36,6 @@ def hours_for_date(location: Location, day: date) -> OpeningHours | None:
     return None
 
 
-def upcoming_hours(
-    location: Location,
-    start: date,
-    days: int = 6,
-) -> list[tuple[date, OpeningHours | None]]:
-    """Return the opening hours for a range of dates starting at start."""
-
-    result: list[tuple[date, OpeningHours | None]] = []
-
-    for offset in range(days):
-        day = start + timedelta(days=offset)
-        result.append((day, hours_for_date(location, day)))
-
-    return result
-
-
 def _notice_applies(notice: Notice, location: Location, day: date) -> bool:
     """Return whether notice applies to location on day."""
 

@@ -6,7 +6,6 @@ from custom_components.cure_afvalbeheer.schedule import (
     next_open_close,
     resolve_day,
     resolve_upcoming,
-    upcoming_hours,
 )
 from custom_components.cure_afvalbeheer.weekday import Weekday
 
@@ -51,16 +50,6 @@ def test_hours_for_date_returns_none_when_no_match():
     result = hours_for_date(_LOCATION, tuesday)
 
     assert result is None
-
-
-def test_upcoming_hours_returns_requested_number_of_days():
-    monday = date(2026, 7, 20)
-
-    result = upcoming_hours(_LOCATION, monday, days=6)
-
-    assert len(result) == 6
-    assert result[0] == (monday, _MONDAY)
-    assert result[-1][0] == date(2026, 7, 25)
 
 
 def test_resolve_day_falls_back_to_regular_schedule_without_notices():
