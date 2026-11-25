@@ -19,6 +19,9 @@ from .models import (
 )
 from .notices import (
     announces_effective_date,
+    heat_protocol_unreadable,
+    mentions_date,
+    mentions_deviation,
     parse_closing_days,
     parse_closure_notice,
     parse_effective_from,
@@ -138,6 +141,22 @@ def _announced_hours_lines(heading: str, lines: list[str]) -> list[str]:
         for line in candidates
         if is_opening_hours_line(line.strip(" ."))
     ]
+
+
+# Headings the safety net leaves alone because another reader covers them:
+# the regular hours, announcements checked against those, the address
+# section and the house rules.
+_COVERED_HEADING = re.compile(
+    r"^(?:openingstijden|adres|locatie|plattegrond|attention)"
+    r"|openingstijd|geopend|\bopen\b",
+    re.IGNORECASE,
+)
+
+
+def _covered_elsewhere(heading: str) -> bool:
+    """Return whether another part of the parser already reads this heading."""
+
+    return _COVERED_HEADING.search(heading) is not None
 
 
 def _same_hours(first: OpeningHours, second: OpeningHours) -> bool:
@@ -467,17 +486,33 @@ class CureParser:
         in that case, since it is otherwise dropped silently.
         """
 
+        return self._addresses_and_warnings()[0]
+
+    def _addresses_and_warnings(self) -> tuple[list[tuple[str, str | None]], list[str]]:
+        """Return the addresses, and what in the address section did not fit.
+
+        A location name directly followed by the next one has no address
+        of its own. It used to be dropped without a word; now it is kept
+        (without an address) and reported, since a location missing from
+        the sensors is just as wrong as wrong opening hours.
+        """
+
         section = selectors.address_section(self._soup)
 
         if section is None:
-            return []
+            return [], []
 
-        result: list[tuple[str, str]] = []
+        result: list[tuple[str, str | None]] = []
+        warnings: list[str] = []
 
         current_name: str | None = None
 
         for element in section.find_all(["h3", "p"]):
             if element.name == "h3":
+                if current_name is not None:
+                    result.append((current_name, None))
+                    warnings.append(f"Geen adres gevonden voor {current_name}")
+
                 current_name = element.get_text(strip=True)
 
             elif element.name == "p":
@@ -495,7 +530,30 @@ class CureParser:
 
                 current_name = None
 
-        return result
+        if current_name is not None:
+            result.append((current_name, None))
+            warnings.append(f"Geen adres gevonden voor {current_name}")
+
+        return result, warnings
+
+    def location_warnings(self) -> list[str]:
+        """Return what suggests the locations found are not all there is.
+
+        Besides the address section itself, the page names its locations
+        elsewhere too, on the site maps ("Plattegrond Milieustraat Acht").
+        A location named there but not among the addresses points at a
+        layout the address section no longer matches.
+        """
+
+        addresses, warnings = self._addresses_and_warnings()
+
+        known = {name.strip().lower() for name, _ in addresses}
+
+        for name in selectors.site_map_location_names(self._soup):
+            if name.lower() not in known:
+                warnings.append(f"{name} staat op de pagina, maar niet bij de adressen")
+
+        return warnings
 
     def parse_locations(self, today: date | None = None) -> list[Location]:
         """Parse all recycling centres."""
@@ -557,12 +615,63 @@ class CureParser:
         if today is None:
             today = date.today()
 
+        return self._notices_and_warnings(locations, today)[0]
+
+    def notice_warnings(
+        self,
+        locations: list[Location],
+        today: date | None = None,
+    ) -> list[str]:
+        """Return the messages on the page that could not be read."""
+
+        if today is None:
+            today = date.today()
+
+        return self._notices_and_warnings(locations, today)[1]
+
+    def _notices_and_warnings(
+        self, locations: list[Location], today: date
+    ) -> tuple[list[Notice], list[str]]:
+        """Parse the deviations, and list every message that would not read.
+
+        Each kind of message is read as before. What is new is that a
+        message which clearly is one (a "Let op" block, a heat protocol
+        banner, a dated closing day) but yields nothing is reported rather
+        than skipped. A message that has simply expired is not reported:
+        that is the page being out of date, not the parser.
+
+        Last, every other heading on the page that talks about closing or
+        changed hours next to a date is reported too. That is the safety
+        net for a layout change: a notice Cure moves into a block of a
+        new kind would otherwise vanish from the sensors without a trace.
+        """
+
         result: list[Notice] = []
+        warnings: list[str] = []
+
+        # Headings handled by one of the readers below; the safety net at
+        # the end leaves those alone.
+        handled: set[str] = set()
 
         heat_protocol = self.heat_protocol_notice(today)
 
         if heat_protocol is not None:
             result.append(heat_protocol)
+
+        news = selectors.news_heading(self._soup)
+
+        if news:
+            handled.add(news)
+
+            if heat_protocol is None and heat_protocol_unreadable(news, today):
+                warnings.append(f"Hitteprotocol niet leesbaar: {news}")
+
+            elif (
+                "hitte" not in news.lower()
+                and mentions_deviation(news)
+                and mentions_date(news)
+            ):
+                warnings.append(f"Bericht niet verwerkt: {news}")
 
         closure_section = selectors.closure_notice_section(self._soup)
 
@@ -573,6 +682,8 @@ class CureParser:
                 closure_heading_text = closure_heading.get_text(strip=True)
                 body_text = closure_section.get_text(" ", strip=True)
 
+                handled.add(closure_heading.get_text(" ", strip=True))
+
                 closure = parse_closure_notice(closure_heading_text, body_text, today)
 
                 if closure is not None:
@@ -581,12 +692,32 @@ class CureParser:
                     )
                     result.append(closure)
 
+                else:
+                    warnings.append(f"Mededeling niet leesbaar: {closure_heading_text}")
+
         # No location hint: the closing days are listed once per
         # municipality page and apply to every recycling centre on it.
         for heading, lines in selectors.closing_days_blocks(self._soup):
+            handled.add(heading)
+
             result.extend(parse_closing_days(heading, lines, today))
 
-        return result
+            for line in lines:
+                if mentions_date(line) and not parse_closing_days(
+                    heading, [line], today
+                ):
+                    warnings.append(f"Sluitingsdag niet leesbaar: {line}")
+
+        for heading, lines in selectors.blocks_with_heading(self._soup):
+            if heading in handled or _covered_elsewhere(heading):
+                continue
+
+            text = " ".join([heading, *lines])
+
+            if mentions_deviation(heading) and mentions_date(text):
+                warnings.append(f"Bericht niet verwerkt: {heading}")
+
+        return result, warnings
 
     def parse(self, today: date | None = None) -> CureData:
         """Parse the complete page."""
@@ -596,8 +727,15 @@ class CureParser:
 
         locations = self.parse_locations(today)
 
-        return CureData(
-            locations=locations,
-            notices=self.notices(locations, today),
-            hours_warnings=self.hours_warnings(today),
-        )
+        notices, notice_warnings = self._notices_and_warnings(locations, today)
+
+        warnings = [
+            *self.location_warnings(),
+            *self.hours_warnings(today),
+            *notice_warnings,
+        ]
+
+        for warning in [*self.location_warnings(), *notice_warnings]:
+            LOGGER.warning("Page content: %s", warning)
+
+        return CureData(locations=locations, notices=notices, warnings=warnings)

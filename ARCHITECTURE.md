@@ -403,16 +403,33 @@ de opmaak is veranderd - en beide blijven staan zolang de integratie op
 laatst bekende gegevens terugvalt, zodat verouderde data nooit stilzwijgend
 voor actueel doorgaat.
 
-Een derde melding, `unreadable_opening_hours` (ernst: waarschuwing), gaat aan
-zodra de parser in de openingstijden iets tegenkomt dat hij niet kan lezen:
-een regel met een tijd of "gesloten" die niet als openingstijd te lezen is,
+Een derde melding, `unreadable_website_content` (ernst: waarschuwing), gaat aan
+zodra de parser iets tegenkomt dat hij niet kan lezen. Voor de openingstijden
+is dat: een regel met een tijd of "gesloten" die niet als openingstijd te lezen is,
 een "Vanaf ..."-regel zonder leesbare datum, een ingangsdatum zonder tijden,
 tijden die volgens de pagina zelf verlopen zijn ("tot en met 30 november"),
 of een aankondiging elders op de pagina ("Vanaf 01 december 2026
 openingstijden ...: Ma t/m vr 10:00-17:00, ...") die niet overeenkomt met de
 tijden in het blok "Openingstijden". De melding somt op wat er mis is; de
-parser geeft die lijst door via `CureData.hours_warnings`. Zo wordt een
+parser geeft die lijst door via `CureData.warnings`. Zo wordt een
 herschreven pagina gemeld in plaats van stilzwijgend genegeerd.
+
+Dezelfde melding dekt ook mededelingen en locaties:
+
+- een "Let op"-blok, hitteprotocol-banner of sluitingsdag met een datum die
+  niets oplevert (een verlopen bericht telt niet: dat is de pagina die
+  achterloopt, niet de parser);
+- een nieuwsbericht over sluiten of gewijzigde tijden met een datum, dat
+  geen hitteprotocol is;
+- een vangnet voor een gewijzigde pagina-indeling: elk ander kopje dat over
+  sluiten/gewijzigde tijden gaat en een datum noemt, en dat door geen enkele
+  lezer is opgepakt;
+- een locatienaam zonder adres (die locatie blijft nu bestaan, met adres
+  `None`, in plaats van stil te verdwijnen), en een locatie die op een
+  plattegrond-kaart staat maar niet bij de adressen.
+
+`tests/test_page_warnings.py` bewaakt daarnaast dat de echte pagina's géén
+meldingen geven: een melding die altijd aanstaat wordt genegeerd.
 
 Aangekondigde nieuwe tijden ("Vanaf dinsdag 1 december 2026:" met de nieuwe
 regels eronder, of een eigen kopje "Openingstijden vanaf ...") komen in
@@ -850,16 +867,33 @@ layout has changed - and both stay up for as long as the integration is
 falling back on last known data, so stale data is never silently passed off
 as current.
 
-A third notification, `unreadable_opening_hours` (severity: warning), goes up
-whenever the parser meets something in the opening hours it cannot read: a
-line with a time or "gesloten" that does not read as opening hours, a
+A third notification, `unreadable_website_content` (severity: warning), goes up
+whenever the parser meets something it cannot read. For the opening hours
+that is: a line with a time or "gesloten" that does not read as opening
+hours, a
 "Vanaf ..." line without a readable date, a start date without hours, hours
 the page itself says have expired ("tot en met 30 november"), or an
 announcement elsewhere on the page ("Vanaf 01 december 2026 openingstijden
 ...: Ma t/m vr 10:00-17:00, ...") that disagrees with the hours in the
 "Openingstijden" block. The notification lists what is wrong; the parser
-hands that list over in `CureData.hours_warnings`. A reworded page is thus
+hands that list over in `CureData.warnings`. A reworded page is thus
 reported instead of silently ignored.
+
+The same notification also covers notices and locations:
+
+- a "Let op" block, heat protocol banner or closing day with a date that
+  yields nothing (an expired message does not count: that is the page
+  lagging behind, not the parser);
+- a news message about closing or changed hours with a date that is not a
+  heat protocol;
+- a safety net for a changed page layout: any other heading about closing
+  or changed hours that names a date and that no reader picked up;
+- a location name without an address (that location now stays, with
+  address `None`, instead of silently vanishing), and a location on a
+  site map card that is missing from the addresses.
+
+`tests/test_page_warnings.py` also guards that the real pages raise no
+warnings at all: a notification that is always on gets ignored.
 
 Announced new hours ("Vanaf dinsdag 1 december 2026:" with the new lines
 below it, or a heading of their own, "Openingstijden vanaf ...") end up in

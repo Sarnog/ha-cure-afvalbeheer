@@ -11,7 +11,7 @@ from custom_components.cure_afvalbeheer.const import (
     DOMAIN,
     ISSUE_NO_LOCATIONS_FOUND,
     ISSUE_NO_OPENING_HOURS_FOUND,
-    ISSUE_UNREADABLE_OPENING_HOURS,
+    ISSUE_UNREADABLE_WEBSITE_CONTENT,
 )
 from custom_components.cure_afvalbeheer.coordinator import (
     CureDataUpdateCoordinator,
@@ -388,7 +388,7 @@ async def test_raises_a_warning_issue_for_unreadable_hours(hass) -> None:
     api = AsyncMock()
     api.fetch_milieustraat.return_value = CureData(
         locations=[_location_with_hours()],
-        hours_warnings=["Regel niet leesbaar: Weekend: 09:00 - 15:00"],
+        warnings=["Regel niet leesbaar: Weekend: 09:00 - 15:00"],
     )
 
     coordinator = await _coordinator_with(hass, api, entry)
@@ -396,7 +396,7 @@ async def test_raises_a_warning_issue_for_unreadable_hours(hass) -> None:
     await coordinator.async_refresh()
 
     issue_registry = ir.async_get(hass)
-    issue_id = f"{ISSUE_UNREADABLE_OPENING_HOURS}_{entry.entry_id}"
+    issue_id = f"{ISSUE_UNREADABLE_WEBSITE_CONTENT}_{entry.entry_id}"
     issue = issue_registry.async_get_issue(DOMAIN, issue_id)
 
     assert issue is not None

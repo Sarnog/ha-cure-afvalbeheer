@@ -96,7 +96,9 @@ er is geen los RSS-abonnement nodig.
   die datum in de sensoren, ook in de vooruitblik. Kan een deel van de
   openingstijden niet gelezen worden, of spreekt een aankondiging op de pagina
   de openingstijden tegen, dan verschijnt een reparatie-melding die precies
-  noemt wat er niet klopt.
+  noemt wat er niet klopt. Hetzelfde geldt voor mededelingen ("Let op",
+  hitteprotocol, sluitingsdagen) en locaties die niet te lezen zijn, ook als
+  Cure de indeling van de pagina verandert.
 - **Diagnostics** — een downloadbare dump van de config entry en de actuele
   coordinator-data, handig bij bugrapporten.
 - **Lokaal merklogo** — geserveerd via de eigen `brand/`-map (Home Assistant
@@ -528,7 +530,9 @@ separate RSS subscription is needed.
   date ("Vanaf dinsdag 1 december 2026: ..."), the sensors use them from that
   date on, forecast included. If part of the opening hours cannot be read, or
   an announcement on the page contradicts them, a repair notification lists
-  exactly what does not add up.
+  exactly what does not add up. The same goes for notices ("Let op", heat
+  protocol, closing days) and locations that cannot be read, also when Cure
+  changes the page layout.
 - **Diagnostics** — a downloadable dump of the config entry and the current
   coordinator data, handy for bug reports.
 - **Local brand logo** — served via the integration's own `brand/` folder

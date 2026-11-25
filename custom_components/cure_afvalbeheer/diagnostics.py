@@ -60,7 +60,7 @@ def _serialize_data(data: CureData) -> dict[str, Any]:
     return {
         "locations": [_serialize_location(location) for location in data.locations],
         "notices": [_serialize_notice(notice) for notice in data.notices],
-        "hours_warnings": list(data.hours_warnings),
+        "warnings": list(data.warnings),
     }
 
 

@@ -54,9 +54,9 @@
       "title": "Geen openingstijden meer gevonden",
       "description": "De integratie kon geen openingstijden meer vinden op de Cure-website voor {municipality}. Dit duidt meestal op een wijziging in de website-opmaak waardoor de parser niet meer werkt. Zolang dit speelt houdt de integratie de laatst bekende openingstijden aan, dus de getoonde tijden kunnen verouderd zijn. Meld dit alsjeblieft via de issue tracker van de integratie en voeg de diagnostics-download toe."
     },
-    "unreadable_opening_hours": {
-      "title": "Openingstijden deels onleesbaar",
-      "description": "Een deel van de openingstijden op de Cure-website voor {municipality} kon niet worden gelezen, dus de sensoren kunnen afwijken van wat de website zegt. Controleer de openingstijden op de website zelf zolang deze melding staat. Wat er niet gelezen kon worden:\n\n{details}\n\nMeld dit alsjeblieft via de issue tracker van de integratie en voeg de diagnostics-download toe."
+    "unreadable_website_content": {
+      "title": "Website deels onleesbaar",
+      "description": "Een deel van de Cure-website voor {municipality} kon niet worden gelezen: openingstijden, mededelingen of locaties. De sensoren kunnen daardoor afwijken van wat de website zegt. Controleer de website zelf zolang deze melding staat. Wat er niet klopt:\n\n{details}\n\nMeld dit alsjeblieft via de issue tracker van de integratie en voeg de diagnostics-download toe."
     }
   }
 }

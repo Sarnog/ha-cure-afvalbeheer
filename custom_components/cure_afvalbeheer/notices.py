@@ -1093,3 +1093,43 @@ def announces_effective_date(text: str) -> bool:
     """
 
     return _EFFECTIVE_WORDING.match(text) is not None
+
+
+# Words that mark a text as being about a change to when a location is
+# open: anything carrying one of these next to a date is a message the
+# sensors should reflect, so it must not slip by unread.
+_DEVIATION_WORDING = re.compile(
+    r"gesloten|\bdicht\b|sluit|verbouw|storing|hitte|afwijk|aangepast|gewijzigd"
+    r"|openingstijd|geopend",
+    re.IGNORECASE,
+)
+
+
+def mentions_date(text: str) -> bool:
+    """Return whether a text names a date, in words or in numbers."""
+
+    return bool(_SINGLE_DATE.search(text) or _NUMERIC_DATE.search(text))
+
+
+def mentions_deviation(text: str) -> bool:
+    """Return whether a text talks about a change to the opening hours."""
+
+    return _DEVIATION_WORDING.search(text) is not None
+
+
+def heat_protocol_unreadable(heading: str, today: date) -> bool:
+    """Return whether a heat protocol text exists but cannot be read.
+
+    Separates "there is no heat protocol" and "the heat protocol has
+    expired" (both fine to ignore) from "there is one and its times or
+    period cannot be read" (which leaves the sensors disagreeing with the
+    website).
+    """
+
+    if "hitte" not in heading.lower():
+        return False
+
+    time_range = parse_time_range(heading) or parse_adjusted_hours(heading)
+    _, ends = _heat_protocol_period(heading, today, True)
+
+    return time_range == (None, None) or ends is None

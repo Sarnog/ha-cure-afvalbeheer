@@ -92,6 +92,12 @@ def blocks_under_heading(
     contains: list[Tag] = []
 
     for heading in headings(soup):
+        # The site-wide news block is about every municipality at once and
+        # is read on its own; "Gewijzigde openingstijden" in its heading is
+        # a message, not this page's hours.
+        if heading.find_parent(attrs={"data-block": "newsBlock"}) is not None:
+            continue
+
         text = _plain_text(heading).lower()
 
         if text == target:
@@ -419,3 +425,56 @@ def announcement_blocks(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
         )
 
     return blocks
+
+
+def blocks_with_heading(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
+    """Return every heading on the page with the lines belonging to it.
+
+    The site-wide news block and the page footer are left out: the first
+    is read on its own, the second is navigation.
+    """
+
+    blocks: list[tuple[str, list[str]]] = []
+
+    for heading in headings(soup):
+        if heading.find_parent(attrs={"data-block": ("newsBlock", "footerContent")}):
+            continue
+
+        if heading.find_parent("footer") is not None:
+            continue
+
+        text = _plain_text(heading)
+
+        if not text:
+            continue
+
+        blocks.append(
+            (
+                text,
+                [
+                    line
+                    for element in _text_elements_after(heading)
+                    for line in _lines_of(element)
+                ],
+            )
+        )
+
+    return blocks
+
+
+# A site map card names one location ("Plattegrond Milieustraat Acht").
+_SITE_MAP_HEADING = re.compile(r"^plattegrond\s+(?P<name>milieustra\w*\s+.+)$", re.I)
+
+
+def site_map_location_names(soup: BeautifulSoup) -> list[str]:
+    """Return the location names the site map cards mention."""
+
+    names: list[str] = []
+
+    for heading in headings(soup):
+        match = _SITE_MAP_HEADING.match(_plain_text(heading))
+
+        if match is not None and match.group("name") not in names:
+            names.append(match.group("name"))
+
+    return names

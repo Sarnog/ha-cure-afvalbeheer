@@ -15,7 +15,7 @@ from .const import (
     DOMAIN,
     ISSUE_NO_LOCATIONS_FOUND,
     ISSUE_NO_OPENING_HOURS_FOUND,
-    ISSUE_UNREADABLE_OPENING_HOURS,
+    ISSUE_UNREADABLE_WEBSITE_CONTENT,
     NAME,
 )
 from .exceptions import CureApiError
@@ -94,28 +94,28 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
         except CureApiError as err:
             raise UpdateFailed(str(err)) from err
 
-        self._report_unreadable_hours(data)
+        self._report_unreadable_content(data)
 
         return self._with_known_good_data(data)
 
-    def _report_unreadable_hours(self, data: CureData) -> None:
-        """Show a repair notification while part of the hours is unreadable.
+    def _report_unreadable_content(self, data: CureData) -> None:
+        """Show a repair notification while part of the page is unreadable.
 
-        The parser reads what it can and lists what it could not: a line
-        that looks like opening hours, a start date it cannot place, or
-        hours the page itself says have expired. Any of those means the
-        sensors may not match the website, which the user must be told
-        rather than left to find out at a closed gate.
+        The parser reads what it can and lists what it could not: opening
+        hours, a start date, a message ("Let op", heat protocol, a closing
+        day) or a location. Any of those means the sensors may not match
+        the website, which the user must be told rather than left to find
+        out at a closed gate.
         """
 
-        if not data.hours_warnings:
-            self._clear_issue(ISSUE_UNREADABLE_OPENING_HOURS)
+        if not data.warnings:
+            self._clear_issue(ISSUE_UNREADABLE_WEBSITE_CONTENT)
             return
 
         self._raise_issue(
-            ISSUE_UNREADABLE_OPENING_HOURS,
+            ISSUE_UNREADABLE_WEBSITE_CONTENT,
             ir.IssueSeverity.WARNING,
-            details="\n".join(f"- {warning}" for warning in data.hours_warnings),
+            details="\n".join(f"- {warning}" for warning in data.warnings),
         )
 
     def _with_known_good_data(self, data: CureData) -> CureData:
@@ -168,7 +168,7 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
         return CureData(
             locations=self.data.locations,
             notices=data.notices,
-            hours_warnings=data.hours_warnings,
+            warnings=data.warnings,
         )
 
     def _with_opening_hours(self, data: CureData) -> CureData:
@@ -223,5 +223,5 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
         return CureData(
             locations=locations,
             notices=data.notices,
-            hours_warnings=data.hours_warnings,
+            warnings=data.warnings,
         )

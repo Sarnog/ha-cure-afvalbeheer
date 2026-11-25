@@ -64,6 +64,7 @@ class CureData:
 
     locations: list[Location]
     notices: list[Notice] = field(default_factory=list)
-    # Lines in the opening hours section that looked like hours but could
-    # not be read, so a reworded page is reported instead of ignored.
-    hours_warnings: list[str] = field(default_factory=list)
+    # Everything on the page that clearly meant something (hours, a
+    # message, a location) but could not be read, so a reworded or
+    # rearranged page is reported instead of ignored.
+    warnings: list[str] = field(default_factory=list)

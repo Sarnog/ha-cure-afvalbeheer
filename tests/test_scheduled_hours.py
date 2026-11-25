@@ -61,7 +61,7 @@ def test_fixture_keeps_current_hours_until_the_start_date():
 
     assert _times(location.hours)[Weekday.MONDAY] == ("08:30", "17:00", False)
     assert [scheduled.starts for scheduled in location.scheduled] == [date(2026, 12, 1)]
-    assert data.hours_warnings == []
+    assert data.warnings == []
 
 
 def test_fixture_shows_new_hours_from_the_start_date():
@@ -96,7 +96,7 @@ def test_fixture_after_the_start_date_uses_the_new_hours_as_current():
     assert _times(location.hours)[Weekday.MONDAY] == ("10:00", "17:00", False)
     assert _times(location.hours)[Weekday.SATURDAY] == ("09:00", "17:00", False)
     assert location.scheduled == []
-    assert data.hours_warnings == []
+    assert data.warnings == []
 
 
 def test_new_hours_written_with_line_breaks_in_one_paragraph():
@@ -114,7 +114,7 @@ def test_new_hours_written_with_line_breaks_in_one_paragraph():
     assert scheduled.starts == date(2026, 12, 1)
     assert _times(scheduled.hours)[Weekday.FRIDAY] == ("10:00", "17:00", False)
     assert _times(scheduled.hours)[Weekday.SUNDAY] == (None, None, True)
-    assert data.hours_warnings == []
+    assert data.warnings == []
 
 
 def test_new_hours_under_a_heading_of_their_own():
@@ -175,7 +175,7 @@ def test_an_unreadable_hours_line_is_reported():
         "<h2>Openingstijden</h2>" + _OLD_HOURS + "<p>Weekend: 09:00 - 15:00</p>"
     )
 
-    warnings = CureParser(html).parse(_BEFORE).hours_warnings
+    warnings = CureParser(html).hours_warnings(_BEFORE)
 
     assert warnings == ["Regel niet leesbaar: Weekend: 09:00 - 15:00"]
 
@@ -189,7 +189,7 @@ def test_an_unreadable_start_date_is_reported():
 
     data = CureParser(html).parse(_BEFORE)
 
-    assert "Ingangsdatum niet leesbaar: Vanaf volgend jaar:" in data.hours_warnings
+    assert "Ingangsdatum niet leesbaar: Vanaf volgend jaar:" in data.warnings
 
 
 def test_a_start_date_without_hours_is_reported():
@@ -201,17 +201,15 @@ def test_a_start_date_without_hours_is_reported():
 
     data = CureParser(html).parse(_BEFORE)
 
-    assert data.hours_warnings == [
-        "Geen openingstijden gevonden bij ingangsdatum 01-12-2026"
-    ]
+    assert data.warnings == ["Geen openingstijden gevonden bij ingangsdatum 01-12-2026"]
 
 
 def test_hours_the_page_says_have_expired_are_reported():
     html = _page("<h2>Openingstijden tot en met 30 november 2026</h2>" + _OLD_HOURS)
 
-    assert CureParser(html).parse(_BEFORE).hours_warnings == []
+    assert CureParser(html).hours_warnings(_BEFORE) == []
 
-    warnings = CureParser(html).parse(_AFTER).hours_warnings
+    warnings = CureParser(html).hours_warnings(_AFTER)
 
     assert len(warnings) == 1
     assert "tot en met 30-11-2026" in warnings[0]
@@ -236,7 +234,7 @@ _NEW_HOURS = (
 def test_an_announcement_matching_the_hours_gives_no_warning():
     html = _page("<h2>Openingstijden</h2>" + _OLD_HOURS + _NEW_HOURS, _ANNOUNCEMENT)
 
-    assert CureParser(html).parse(_BEFORE).hours_warnings == []
+    assert CureParser(html).hours_warnings(_BEFORE) == []
 
 
 def test_an_announcement_missing_from_the_hours_block_is_reported():
@@ -244,7 +242,7 @@ def test_an_announcement_missing_from_the_hours_block_is_reported():
 
     html = _page("<h2>Openingstijden</h2>" + _OLD_HOURS, _ANNOUNCEMENT)
 
-    warnings = CureParser(html).parse(_BEFORE).hours_warnings
+    warnings = CureParser(html).hours_warnings(_BEFORE)
 
     assert any("noemt maandag 10:00-17:00" in warning for warning in warnings)
 
@@ -255,7 +253,7 @@ def test_an_announcement_contradicting_the_hours_is_reported():
         _ANNOUNCEMENT.replace("za 09:00-17:00", "za 08:00-17:00"),
     )
 
-    warnings = CureParser(html).parse(_BEFORE).hours_warnings
+    warnings = CureParser(html).hours_warnings(_BEFORE)
 
     assert warnings == [
         "Aankondiging vanaf 01-12-2026 noemt zaterdag 08:00-17:00, maar de "
@@ -266,7 +264,7 @@ def test_an_announcement_contradicting_the_hours_is_reported():
 def test_an_old_announcement_is_not_checked_anymore():
     html = _page("<h2>Openingstijden</h2>" + _OLD_HOURS, _ANNOUNCEMENT)
 
-    assert CureParser(html).parse(date(2027, 3, 1)).hours_warnings == []
+    assert CureParser(html).hours_warnings(date(2027, 3, 1)) == []
 
 
 @pytest.mark.parametrize(
