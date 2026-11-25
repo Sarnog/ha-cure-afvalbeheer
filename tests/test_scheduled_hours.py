@@ -299,3 +299,36 @@ def test_other_ways_of_writing_an_hours_line(line, days, expected):
 
 def test_a_start_date_line_is_not_read_as_hours():
     assert not is_opening_hours_line("Vanaf dinsdag 1 december 2026:")
+
+
+def test_a_dated_heading_before_the_undated_one_keeps_both_sets():
+    html = _page(
+        "<h2>Openingstijden vanaf 1 december 2026</h2>"
+        "<p>Maandag t/m vrijdag: 10:00 - 17:00</p>"
+        "<h2>Openingstijden tot en met 30 november 2026</h2>" + _OLD_HOURS
+    )
+
+    location = CureParser(html).parse(_BEFORE).locations[0]
+
+    assert _times(location.hours)[Weekday.MONDAY] == ("08:30", "17:00", False)
+    assert location.scheduled[0].starts == date(2026, 12, 1)
+    assert _times(location.scheduled[0].hours)[Weekday.MONDAY] == (
+        "10:00",
+        "17:00",
+        False,
+    )
+
+
+def test_expired_hours_before_a_later_set_are_reported():
+    """A gap between the end of one set and the start of the next."""
+
+    html = _page(
+        "<h2>Openingstijden tot en met 30 november 2026</h2>"
+        + _OLD_HOURS
+        + "<p>Vanaf 7 december 2026:</p><p>Maandag t/m vrijdag: 10:00 - 17:00</p>"
+    )
+
+    warnings = CureParser(html).hours_warnings(_AFTER)
+
+    assert len(warnings) == 1
+    assert "tot en met 30-11-2026" in warnings[0]

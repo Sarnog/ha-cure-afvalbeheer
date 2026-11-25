@@ -232,6 +232,13 @@ class CureParser:
         if len(all_blocks) > 1 and any(
             parse_effective_from(heading, today) for heading, _ in all_blocks
         ):
+            # The undated heading goes first, whatever order the page
+            # used: its own lines are the set before any start date, and
+            # behind a dated heading they would be merged into that set.
+            all_blocks.sort(
+                key=lambda block: parse_effective_from(block[0], today) is not None
+            )
+
             lines: list[str] = []
 
             for index, (heading, block_lines) in enumerate(all_blocks):
@@ -360,18 +367,19 @@ class CureParser:
             else:
                 scheduled.append(ScheduledHours(starts=period.starts, hours=hours))
 
-        # "Openingstijden tot en met 30 november" with nothing after it,
-        # read in December: the page itself says these hours are over.
+        # "Openingstijden tot en met 30 november" read in December, with
+        # nothing that starts by today: the page itself says these hours are
+        # over, so showing them is a guess. That holds just as well when a
+        # later set exists but only starts after a gap.
         if (
             current_period is not None
             and current_period.ends is not None
             and current_period.ends < today
-            and not scheduled
         ):
             warnings.append(
                 "Openingstijden waren volgens de website geldig tot en met "
-                f"{current_period.ends.strftime('%d-%m-%Y')}; nieuwe "
-                "openingstijden niet gevonden"
+                f"{current_period.ends.strftime('%d-%m-%Y')}; voor vandaag "
+                "zijn geen geldige openingstijden gevonden"
             )
 
         warnings.extend(self._announcement_mismatches(current, scheduled, today))
