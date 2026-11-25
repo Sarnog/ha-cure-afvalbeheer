@@ -72,6 +72,18 @@ _DAY_LIST = re.compile(r"\s*(?:,|&|\ben\b|/)\s*", re.IGNORECASE)
 
 _LABEL_NOISE = re.compile(r"[. ]+")
 
+# Words that can sit between the days and the times without saying
+# anything about either: "Maandag tot en met vrijdag geopend van 10:00 tot
+# 17:00 uur", "Zaterdag zijn we open van ...", "Zondag is de milieustraat
+# gesloten". They are cut off the end of the label so only the days remain.
+_LABEL_FILLER = re.compile(
+    r"(?:\s+(?:(?:zijn|is)\s+(?:we|wij|de\s+milieustraat|de\s+milieustraten"
+    r"|de\s+locatie|het)|zijn|is))?"
+    r"(?:\s+(?:geopend|open|opent))?"
+    r"(?:\s+(?:van(?:af)?|om))?\s*$",
+    re.IGNORECASE,
+)
+
 
 def _normalise(text: str) -> str:
     """Return a day label reduced to lower-case words and spaces."""
@@ -170,9 +182,15 @@ def _split_line(line: str) -> tuple[str, str] | None:
     colon = line.find(":")
 
     if colon != -1 and colon < anchor.start():
-        return line[:colon].strip(), line[colon + 1 :].strip()
+        label, value = line[:colon], line[colon + 1 :]
+    else:
+        label, value = line[: anchor.start()], line[anchor.start() :]
 
-    return line[: anchor.start()].strip(" :-"), line[anchor.start() :].strip()
+    # Cut connecting words ("geopend van") off the label, then any
+    # punctuation that was standing in front of them.
+    label = _LABEL_FILLER.sub("", label.strip(" :-")).strip(" :-")
+
+    return label, value.strip()
 
 
 def parse_opening_hours_line(line: str) -> list[OpeningHours]:
@@ -253,3 +271,15 @@ def is_opening_hours_line(line: str) -> bool:
         return True
 
     return parse_time_range(value) is not None
+
+
+def mentions_hours(line: str) -> bool:
+    """Return whether a line says something about times or being closed.
+
+    Used to spot a line in the opening hours section that was not read:
+    one carrying a time range or a word meaning closed is meant as opening
+    hours, so dropping it silently could leave the sensors disagreeing
+    with the website without anyone noticing.
+    """
+
+    return bool(_TIME_RANGE.search(line) or _CLOSED_WORD.search(line))

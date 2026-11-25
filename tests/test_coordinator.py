@@ -11,6 +11,7 @@ from custom_components.cure_afvalbeheer.const import (
     DOMAIN,
     ISSUE_NO_LOCATIONS_FOUND,
     ISSUE_NO_OPENING_HOURS_FOUND,
+    ISSUE_UNREADABLE_WEBSITE_CONTENT,
 )
 from custom_components.cure_afvalbeheer.coordinator import (
     CureDataUpdateCoordinator,
@@ -377,3 +378,33 @@ async def test_fetches_against_home_assistants_own_date(hass) -> None:
     assert api.fetch_milieustraat.await_args.args[1] == dt_util.now().date()
 
     dt_util.set_default_time_zone(dt_util.UTC)
+
+
+async def test_raises_a_warning_issue_for_unreadable_hours(hass) -> None:
+    """Hours that could not be read must reach the user, not only the log."""
+
+    entry = MockConfigEntry()
+
+    api = AsyncMock()
+    api.fetch_milieustraat.return_value = CureData(
+        locations=[_location_with_hours()],
+        warnings=["Regel niet leesbaar: Weekend: 09:00 - 15:00"],
+    )
+
+    coordinator = await _coordinator_with(hass, api, entry)
+
+    await coordinator.async_refresh()
+
+    issue_registry = ir.async_get(hass)
+    issue_id = f"{ISSUE_UNREADABLE_WEBSITE_CONTENT}_{entry.entry_id}"
+    issue = issue_registry.async_get_issue(DOMAIN, issue_id)
+
+    assert issue is not None
+    assert issue.severity is ir.IssueSeverity.WARNING
+    assert "Weekend: 09:00 - 15:00" in issue.translation_placeholders["details"]
+
+    api.fetch_milieustraat.return_value = CureData(locations=[_location_with_hours()])
+
+    await coordinator.async_refresh()
+
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is None

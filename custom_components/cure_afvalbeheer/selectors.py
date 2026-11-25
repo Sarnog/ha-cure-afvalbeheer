@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from bs4 import BeautifulSoup
-from bs4.element import Tag
+from bs4.element import NavigableString, Tag
 
 _HEADING_LEVELS = ("h1", "h2", "h3", "h4")
 
@@ -57,7 +57,7 @@ def all_headings(soup: BeautifulSoup) -> list[str]:
 
 
 def blocks_under_heading(
-    soup: BeautifulSoup, wanted: str
+    soup: BeautifulSoup, wanted: str, *, starting_too: bool = False
 ) -> list[tuple[str, list[str]]]:
     """Return every block whose heading carries the given text.
 
@@ -78,6 +78,11 @@ def blocks_under_heading(
     Every match of that kind is returned rather than only the first: a
     page could carry a summer and a winter set of hours side by side, and
     picking one of those by document order would be picking at random.
+
+    With starting_too, headings that open with the text are returned next
+    to the exact ones: "Openingstijden" followed by "Openingstijden vanaf
+    1 december 2026" are two sets of the same hours, not a better and a
+    worse match.
     """
 
     target = wanted.strip().lower()
@@ -87,6 +92,12 @@ def blocks_under_heading(
     contains: list[Tag] = []
 
     for heading in headings(soup):
+        # The site-wide news block is about every municipality at once and
+        # is read on its own; "Gewijzigde openingstijden" in its heading is
+        # a message, not this page's hours.
+        if heading.find_parent(attrs={"data-block": "newsBlock"}) is not None:
+            continue
+
         text = _plain_text(heading).lower()
 
         if text == target:
@@ -102,14 +113,14 @@ def blocks_under_heading(
         (
             _plain_text(heading),
             [
-                text
-                for text in (
-                    _plain_text(element) for element in _text_elements_after(heading)
-                )
-                if text
+                line
+                for element in _text_elements_after(heading)
+                for line in _lines_of(element)
             ],
         )
-        for heading in (exact or starts_with or contains)
+        for heading in (
+            (exact + starts_with if starting_too else exact) or starts_with or contains
+        )
     ]
 
 
@@ -243,6 +254,37 @@ def _plain_text(element: Tag) -> str:
     return element.get_text(" ", strip=True).replace("\xa0", " ").strip()
 
 
+def _lines_of(element: Tag) -> list[str]:
+    """Return the lines of text inside one element.
+
+    Cure sometimes writes a whole list as one paragraph broken up with
+    <br> tags ("Vanaf 1 december:<br>Maandag ...<br>Zondag gesloten"),
+    which would otherwise read as one long line that matches nothing. Each
+    <br> therefore ends a line, just as the end of a paragraph does.
+    """
+
+    lines: list[str] = []
+    parts: list[str] = []
+
+    for node in element.descendants:
+        if isinstance(node, Tag) and node.name == "br":
+            lines.append(" ".join(parts))
+            parts = []
+
+        elif isinstance(node, NavigableString) and type(node) is NavigableString:
+            # Only plain text counts: comments, CDATA and the like are
+            # subclasses of NavigableString that a visitor never sees.
+            parts.append(str(node))
+
+    lines.append(" ".join(parts))
+
+    return [
+        " ".join(line.replace("\xa0", " ").split())
+        for line in lines
+        if line.replace("\xa0", " ").strip()
+    ]
+
+
 def _block_end_tags(heading: Tag) -> tuple[str, ...]:
     """Return the heading tags that end the block started by heading."""
 
@@ -343,3 +385,96 @@ def closing_days_blocks(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
         blocks.append((title, lines))
 
     return blocks
+
+
+def announcement_blocks(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
+    """Return every heading that talks about opening hours, with its lines.
+
+    Cure announces a change of hours not only inside the "Openingstijden"
+    block but also in a block of its own ("Vanaf 01 december 2026
+    openingstijden Eindhovense milieustraten: ..."). The parser reads those
+    to check the hours it found against them. The regular "Openingstijden"
+    headings themselves are left out, as is the site-wide news block, whose
+    heading is about every municipality at once.
+    """
+
+    blocks: list[tuple[str, list[str]]] = []
+
+    for heading in headings(soup):
+        text = _plain_text(heading)
+        lower = text.lower()
+
+        if lower.startswith("openingstijden"):
+            continue
+
+        if not re.search(r"openingstijd|geopend|\bopen\b", lower):
+            continue
+
+        if heading.find_parent(attrs={"data-block": "newsBlock"}) is not None:
+            continue
+
+        blocks.append(
+            (
+                text,
+                [
+                    line
+                    for element in _text_elements_after(heading)
+                    for line in _lines_of(element)
+                ],
+            )
+        )
+
+    return blocks
+
+
+def blocks_with_heading(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
+    """Return every heading on the page with the lines belonging to it.
+
+    The site-wide news block and the page footer are left out: the first
+    is read on its own, the second is navigation.
+    """
+
+    blocks: list[tuple[str, list[str]]] = []
+
+    for heading in headings(soup):
+        if heading.find_parent(attrs={"data-block": ("newsBlock", "footerContent")}):
+            continue
+
+        if heading.find_parent("footer") is not None:
+            continue
+
+        text = _plain_text(heading)
+
+        if not text:
+            continue
+
+        blocks.append(
+            (
+                text,
+                [
+                    line
+                    for element in _text_elements_after(heading)
+                    for line in _lines_of(element)
+                ],
+            )
+        )
+
+    return blocks
+
+
+# A site map card names one location ("Plattegrond Milieustraat Acht").
+_SITE_MAP_HEADING = re.compile(r"^plattegrond\s+(?P<name>milieustra\w*\s+.+)$", re.I)
+
+
+def site_map_location_names(soup: BeautifulSoup) -> list[str]:
+    """Return the location names the site map cards mention."""
+
+    names: list[str] = []
+
+    for heading in headings(soup):
+        match = _SITE_MAP_HEADING.match(_plain_text(heading))
+
+        if match is not None and match.group("name") not in names:
+            names.append(match.group("name"))
+
+    return names

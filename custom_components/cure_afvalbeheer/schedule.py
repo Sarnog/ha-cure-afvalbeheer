@@ -25,7 +25,15 @@ def hours_for_date(location: Location, day: date) -> OpeningHours | None:
 
     weekday = Weekday.from_date(day)
 
-    by_day = {hours.day: hours for hours in location.hours}
+    # The latest announced set that has started by this date wins; before
+    # the first one starts, the current regular hours apply.
+    regular = location.hours
+
+    for scheduled in location.scheduled:
+        if scheduled.starts <= day:
+            regular = scheduled.hours
+
+    by_day = {hours.day: hours for hours in regular}
 
     if weekday in by_day:
         return by_day[weekday]

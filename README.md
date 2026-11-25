@@ -91,6 +91,14 @@ er is geen los RSS-abonnement nodig.
   milieustraten zelf als voor de openingstijden: verdwijnen die uit de
   pagina, dan blijven de laatst bekende tijden staan in plaats van dat alles
   stilzwijgend op "gesloten" springt.
+- **Aangekondigde openingstijden** — kondigt Cure nieuwe tijden aan met een
+  ingangsdatum ("Vanaf dinsdag 1 december 2026: ..."), dan gelden die vanaf
+  die datum in de sensoren, ook in de vooruitblik. Kan een deel van de
+  openingstijden niet gelezen worden, of spreekt een aankondiging op de pagina
+  de openingstijden tegen, dan verschijnt een reparatie-melding die precies
+  noemt wat er niet klopt. Hetzelfde geldt voor mededelingen ("Let op",
+  hitteprotocol, sluitingsdagen) en locaties die niet te lezen zijn, ook als
+  Cure de indeling van de pagina verandert.
 - **Diagnostics** — een downloadbare dump van de config entry en de actuele
   coordinator-data, handig bij bugrapporten.
 - **Lokaal merklogo** — geserveerd via de eigen `brand/`-map (Home Assistant
@@ -518,6 +526,13 @@ separate RSS subscription is needed.
   stale. This covers both the recycling centres themselves and the opening
   hours: should those disappear from the page, the last known times stay in
   place instead of everything silently flipping to "closed".
+- **Announced opening hours** — when Cure announces new hours with a start
+  date ("Vanaf dinsdag 1 december 2026: ..."), the sensors use them from that
+  date on, forecast included. If part of the opening hours cannot be read, or
+  an announcement on the page contradicts them, a repair notification lists
+  exactly what does not add up. The same goes for notices ("Let op", heat
+  protocol, closing days) and locations that cannot be read, also when Cure
+  changes the page layout.
 - **Diagnostics** — a downloadable dump of the config entry and the current
   coordinator data, handy for bug reports.
 - **Local brand logo** — served via the integration's own `brand/` folder
