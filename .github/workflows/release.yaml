@@ -3,11 +3,20 @@ name: Release
 # Een tag als v1.1.0 pushen maakt de GitHub-release aan, met de tekst uit
 # .github/release-notes/<tag>.md. Zo staan de release notes in de repository
 # en gaan ze mee door review, net als de code.
+#
+# Kan de tag niet gepusht worden, start de workflow dan met de hand
+# (workflow_dispatch) en geef de tag op: die wordt dan op de huidige commit
+# van main aangemaakt.
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag van de release, bijvoorbeeld v1.1.0"
+        required: true
 
 permissions:
   contents: write
@@ -21,8 +30,9 @@ jobs:
       - name: Release aanmaken
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           notes=".github/release-notes/${TAG}.md"
           title="$(head -n 1 ".github/release-notes/${TAG}.title")"
-          gh release create "$TAG" --title "$title" --notes-file "$notes" --verify-tag
+          gh release create "$TAG" --title "$title" --notes-file "$notes" \
+            --target "$GITHUB_SHA"  # alleen gebruikt als de tag nog niet bestaat
