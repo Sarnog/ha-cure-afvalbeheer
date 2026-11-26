@@ -5,6 +5,8 @@ from datetime import date
 import pytest
 
 from custom_components.cure_afvalbeheer.parsing.heat_protocol import (
+    _is_plausible_heat_protocol,
+    heat_protocol_unreadable,
     parse_heat_protocol_notice,
 )
 from tests.hulp import (
@@ -149,3 +151,46 @@ def test_parse_heat_protocol_notice_ignores_vandaag_in_archived_text():
 
     assert parse_heat_protocol_notice(text, date(2026, 8, 14)) is not None
     assert parse_heat_protocol_notice(text, date(2026, 8, 14), current=False) is None
+
+
+# --- Grenzen, gevonden met mutatietests (mutmut) ---------------------------
+
+
+def test_is_plausible_heat_protocol_needs_an_end():
+    assert _is_plausible_heat_protocol(None, None, date(2026, 7, 10)) is False
+
+
+def test_is_plausible_heat_protocol_accepts_exactly_the_maximum_length():
+    start = date(2026, 7, 1)
+
+    assert _is_plausible_heat_protocol(start, date(2026, 7, 15), start) is True
+    assert _is_plausible_heat_protocol(start, date(2026, 7, 16), start) is False
+
+
+def test_heat_protocol_unreadable_is_false_for_a_readable_banner():
+    assert heat_protocol_unreadable(HEAT_PROTOCOL_HEADING, date(2026, 7, 10)) is False
+
+
+def test_heat_protocol_unreadable_without_times():
+    assert heat_protocol_unreadable("Hitteprotocol t/m 16 juli", date(2026, 7, 10))
+
+
+def test_heat_protocol_unreadable_without_a_period():
+    assert heat_protocol_unreadable(
+        "Hitteprotocol: geopend van 08:00 tot 14:00", date(2026, 7, 10)
+    )
+
+
+def test_heat_protocol_unreadable_takes_vandaag_as_today():
+    """The banner on top of the page is current, so "vandaag" is a period."""
+
+    assert (
+        heat_protocol_unreadable(
+            "Hitteprotocol: vandaag geopend van 08:00 tot 14:00", date(2026, 7, 10)
+        )
+        is False
+    )
+
+
+def test_heat_protocol_unreadable_ignores_other_news():
+    assert heat_protocol_unreadable("Nieuwe milieupas", date(2026, 7, 10)) is False

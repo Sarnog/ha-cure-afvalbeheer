@@ -115,10 +115,12 @@ def read_notices(
         closure_heading = closure_section.find("h2")
 
         if closure_heading is not None:
-            closure_heading_text = closure_heading.get_text(strip=True)
+            # A space between the pieces, so "Let op! <span>Acht</span>"
+            # does not come out as "Let op!Acht".
+            closure_heading_text = closure_heading.get_text(" ", strip=True)
             body_text = closure_section.get_text(" ", strip=True)
 
-            handled.add(closure_heading.get_text(" ", strip=True))
+            handled.add(closure_heading_text)
 
             closure = parse_closure_notice(closure_heading_text, body_text, today)
 

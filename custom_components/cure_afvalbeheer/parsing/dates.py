@@ -385,16 +385,18 @@ def parse_dated_list(text: str, today: date | None = None) -> list[date]:
 # The words Cure puts in front of the date a new set of regular hours
 # starts on ("Vanaf dinsdag 1 december 2026", "Per 1 januari 2027",
 # "Met ingang van 01-03-2027"). The date has to follow within a few words,
-# which keeps "per bezoek" or "vanaf 10:00" from counting.
+# which keeps "per bezoek" or "vanaf 10:00" from counting. The text behind
+# the words is only looked at, not consumed, so a later marker inside it
+# ("per bezoek. Vanaf 1 december") still gets its own turn.
 _EFFECTIVE_FROM = re.compile(
-    r"\b(?:vanaf|per|met ingang van|m\.?\s?i\.?\s?v\.?)\s+(?P<rest>.{0,40})",
+    r"\b(?:vanaf|per|met ingang van|m\.?\s?i\.?\s?v\.?)\s+(?=(?P<rest>.{0,40}))",
     re.IGNORECASE,
 )
 
 # The words in front of the last date a set of hours applies to
 # ("Openingstijden tot en met 30 november 2026").
 _EFFECTIVE_UNTIL = re.compile(
-    r"\b(?:tot en met|t/m)\s+(?P<rest>.{0,40})",
+    r"\b(?:tot en met|t/m)\s+(?=(?P<rest>.{0,40}))",
     re.IGNORECASE,
 )
 

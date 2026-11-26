@@ -210,3 +210,91 @@ def test_parse_closure_notice_falls_back_to_a_plain_reason():
 
     assert notice is not None
     assert notice.reason == "aangepaste openingstijden"
+
+
+# --- Grenzen, gevonden met mutatietests (mutmut) ---------------------------
+
+
+def test_parse_closure_notice_reads_a_written_closure_date_against_today():
+    notice = parse_closure_notice(
+        "Let op! Sluiting", "Datum sluiting: 5 januari", date(2020, 12, 20)
+    )
+
+    assert notice is not None
+    assert notice.title == "Let op! Sluiting"
+    assert notice.closed is True
+    assert notice.reason == "sluiting"
+    assert notice.starts == date(2021, 1, 5)
+
+
+def test_parse_closure_notice_closing_today_starts_now():
+    notice = parse_closure_notice(
+        "Let op! Sluiting", "Datum sluiting: 30-11-2026", date(2026, 11, 30)
+    )
+
+    assert notice is not None
+    assert notice.starts is None
+
+
+def test_parse_closure_notice_dated_list_without_times_is_a_closure():
+    notice = parse_closure_notice(
+        "Let op!", "Maandag 4 januari vanwege staking", date(2020, 12, 20)
+    )
+
+    assert notice is not None
+    assert notice.title == "Let op!"
+    assert notice.closed is True
+    assert notice.dates == [date(2021, 1, 4)]
+    assert (notice.opens, notice.closes) == (None, None)
+
+
+def test_parse_closure_notice_dated_list_with_times_adjusts_the_hours():
+    notice = parse_closure_notice(
+        "Let op!",
+        "Maandag 4 januari 2027 geopend van 10:00 tot 14:00",
+        date(2026, 12, 20),
+    )
+
+    assert notice is not None
+    assert notice.closed is False
+    assert notice.reason == "aangepaste openingstijden"
+    assert (notice.opens, notice.closes) == ("10:00", "14:00")
+
+
+def test_parse_closure_notice_dated_list_closed_drops_the_times():
+    notice = parse_closure_notice(
+        "Let op!",
+        "Maandag 4 januari 2027 gesloten, normaal geopend van 08:00 tot 17:00",
+        date(2026, 12, 20),
+    )
+
+    assert notice is not None
+    assert notice.closed is True
+    assert (notice.opens, notice.closes) == (None, None)
+
+
+def test_parse_closure_notice_period_with_times_adjusts_the_hours():
+    notice = parse_closure_notice(
+        "Let op! Vorst",
+        "t/m 16 juli geopend van 10:00 tot 14:00",
+        date(2026, 7, 10),
+    )
+
+    assert notice is not None
+    assert notice.title == "Let op! Vorst"
+    assert notice.reason == "weersomstandigheden"
+    assert notice.closed is False
+    assert (notice.opens, notice.closes) == ("10:00", "14:00")
+    assert notice.ends == date(2026, 7, 16)
+
+
+def test_parse_closure_notice_period_closed_drops_the_times():
+    notice = parse_closure_notice(
+        "Let op!",
+        "t/m 16 juli gesloten, normaal geopend van 08:00 tot 17:00",
+        date(2026, 7, 10),
+    )
+
+    assert notice is not None
+    assert notice.closed is True
+    assert (notice.opens, notice.closes) == (None, None)

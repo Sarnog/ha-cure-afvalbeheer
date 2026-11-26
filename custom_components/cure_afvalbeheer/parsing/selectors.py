@@ -342,12 +342,9 @@ def closing_days_blocks(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
 
         lines: list[str] = []
 
+        # _text_elements_after already keeps only the element that owns a
+        # line, so a <li><p>...</p></li> is read once.
         for element in _text_elements_after(heading):
-            # A <li><p>...</p></li> yields both elements, which is the
-            # same line twice.
-            if element.name == "p" and element.find_parent("li") is not None:
-                continue
-
             line = _plain_text(element)
 
             if line:

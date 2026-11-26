@@ -152,3 +152,13 @@ def test_a_location_on_a_site_map_but_not_in_the_addresses_is_reported():
     assert CureParser(html).parse(_TODAY).warnings == [
         "Milieustraat Woenselse Poort staat op de pagina, maar niet bij de adressen"
     ]
+
+
+def test_page_warnings_are_logged(caplog):
+    CureParser(
+        _page(addresses=_ADDRESSES.replace("<p>Lodewijkstraat 9</p>", ""))
+    ).parse(_TODAY)
+
+    assert "Page content: Geen adres gevonden voor Milieustraat Lodewijkstraat" in (
+        caplog.text
+    )

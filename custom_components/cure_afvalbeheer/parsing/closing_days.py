@@ -13,7 +13,7 @@ from datetime import date, timedelta
 from ..logger import LOGGER
 from ..models import Notice
 from .dates import MONTH_PATTERN, MONTHS, NUMERIC_DATE, WEEKDAY_PATTERN, YEAR
-from .times import parse_adjusted_hours
+from .times import parse_adjusted_hours, parse_time_range
 
 # One or more day numbers sharing a single month, as Cure writes them in
 # the closing days list: "6", "25 en 26", "23 t/m 27". A weekday may be
@@ -240,6 +240,12 @@ def _closing_days_notice(line: str, dates: list[date]) -> Notice | None:
     """
 
     opens, closes = parse_adjusted_hours(line)
+
+    # A bare range behind the date ("Zaterdag 26 december: 10:00 tot
+    # 14:00") is as much an opening time as one with "geopend van" in
+    # front of it; without this the day would read as closed.
+    if opens is None and closes is None:
+        opens, closes = parse_time_range(line) or (None, None)
 
     if opens is not None or closes is not None:
         return Notice(

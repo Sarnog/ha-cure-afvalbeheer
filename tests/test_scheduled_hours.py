@@ -332,3 +332,15 @@ def test_expired_hours_before_a_later_set_are_reported():
 
     assert len(warnings) == 1
     assert "tot en met 30-11-2026" in warnings[0]
+
+
+def test_parse_locations_reads_against_the_given_date():
+    """Gevonden met mutatietests: de datum moet echt doorgegeven worden."""
+
+    parser = CureParser(read_fixture(_FIXTURE))
+
+    before = parser.parse_locations(_BEFORE)[0]
+    after = parser.parse_locations(_AFTER)[0]
+
+    assert _times(before.hours)[Weekday.MONDAY] != ("10:00", "17:00", False)
+    assert _times(after.hours)[Weekday.MONDAY] == ("10:00", "17:00", False)

@@ -419,6 +419,7 @@ Gebruik:
 - Python 3.13
 - Ruff
 - pytest
+- mutmut (mutatietests op `parsing/`: `mutmut run`, daarna `mutmut results`)
 - Home Assistant development guidelines
 
 ## Licentie
@@ -850,6 +851,7 @@ Uses:
 - Python 3.13
 - Ruff
 - pytest
+- mutmut (mutation tests on `parsing/`: `mutmut run`, then `mutmut results`)
 - Home Assistant development guidelines
 
 ## License

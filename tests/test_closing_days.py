@@ -4,7 +4,13 @@ from datetime import date
 
 import pytest
 
-from custom_components.cure_afvalbeheer.parsing.closing_days import parse_closing_days
+from custom_components.cure_afvalbeheer.parsing.closing_days import (
+    _closing_day_date,
+    _closing_day_dates,
+    _expand_days,
+    _span,
+    parse_closing_days,
+)
 
 # Real text captured live from cure-afvalbeheer.nl on 2026-08-05.
 _CLOSING_DAYS_HEADING = "Sluitingsdagen 2026"
@@ -277,3 +283,86 @@ def test_parse_closing_days_does_not_read_a_number_pair_as_a_date():
     """A numeric date needs its year in full, or a house number would do."""
 
     assert parse_closing_days("Sluitingsdagen 2026", ["6-4-26"], date(2026, 1, 1)) == []
+
+
+# --- Grenzen, gevonden met mutatietests (mutmut) ---------------------------
+
+
+def test_expand_days_reads_a_list_as_separate_days():
+    assert _expand_days("25 en 27") == [25, 27]
+
+
+def test_closing_day_date_keeps_a_date_exactly_30_days_ago():
+    assert _closing_day_date(1, 7, None, date(2026, 7, 31), None) == date(2026, 7, 1)
+
+
+def test_closing_day_date_rolls_over_a_date_31_days_ago():
+    assert _closing_day_date(1, 7, None, date(2026, 8, 1), None) == date(2027, 7, 1)
+
+
+def test_span_leaves_a_later_end_in_its_own_year():
+    assert _span(date(2026, 12, 24), [date(2026, 12, 26)], False) == [
+        date(2026, 12, 25),
+        date(2026, 12, 26),
+    ]
+
+
+def test_span_of_one_day():
+    assert _span(date(2026, 12, 24), [date(2026, 12, 24)], False) == [
+        date(2026, 12, 24)
+    ]
+
+
+def test_span_fills_in_a_range_of_exactly_the_maximum_length():
+    result = _span(date(2026, 12, 1), [date(2027, 1, 1)], True)
+
+    assert len(result) == 31
+    assert result[0] == date(2026, 12, 2)
+    assert result[-1] == date(2027, 1, 1)
+
+
+def test_span_does_not_repeat_its_start():
+    assert _span(date(2026, 12, 30), [date(2027, 1, 2)], True) == [
+        date(2026, 12, 31),
+        date(2027, 1, 1),
+        date(2027, 1, 2),
+    ]
+
+
+def test_closing_day_dates_skips_an_impossible_numeric_date():
+    assert _closing_day_dates("31-02-2026 en 01-03-2026", date(2026, 1, 1), None) == [
+        date(2026, 3, 1)
+    ]
+
+
+def test_closing_day_dates_trusts_a_written_year_over_new_year():
+    """With both years written out, a backwards range is not reread."""
+
+    result = _closing_day_dates(
+        "30 december 2026 t/m 2 januari 2026", date(2026, 12, 1), None
+    )
+
+    assert result == [date(2026, 12, 30), date(2026, 1, 2)]
+
+
+def test_closing_days_notices_carry_their_line_as_title():
+    lines = ["Vrijdag 25 december gesloten", "Zaterdag 26 december: 10:00 tot 14:00"]
+
+    notices = parse_closing_days("Sluitingsdagen 2026", lines, date(2026, 12, 1))
+
+    assert [notice.title for notice in notices] == lines
+
+
+def test_closing_days_reads_a_bare_time_range_as_adjusted_hours():
+    """Mutatietests vonden dit: zo'n regel werd als hele dag dicht gelezen."""
+
+    notices = parse_closing_days(
+        "Sluitingsdagen 2026",
+        ["Zaterdag 26 december: 10:00 tot 14:00"],
+        date(2026, 12, 1),
+    )
+
+    assert len(notices) == 1
+    assert notices[0].closed is False
+    assert (notices[0].opens, notices[0].closes) == ("10:00", "14:00")
+    assert notices[0].reason == "aangepaste openingstijden"

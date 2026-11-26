@@ -1,6 +1,7 @@
 """Tests for parsing/times.py: Clock times and adjusted hours in free text."""
 
 from custom_components.cure_afvalbeheer.parsing.times import (
+    hhmm,
     parse_adjusted_hours,
     parse_time_range,
 )
@@ -75,3 +76,40 @@ def test_parse_time_range_with_dots():
 
 def test_parse_time_range_pads_a_single_digit_hour():
     assert parse_time_range("geopend van 8:00 tot 14:00") == ("08:00", "14:00")
+
+
+# --- Grenzen, gevonden met mutatietests (mutmut) ---------------------------
+
+
+def test_hhmm_accepts_the_last_minute_of_the_day():
+    assert hhmm(23, 59) == "23:59"
+
+
+def test_hhmm_rejects_hour_24_and_minute_60():
+    assert hhmm(24, 0) is None
+    assert hhmm(8, 60) is None
+
+
+def test_parse_time_range_keeps_the_closing_minutes():
+    assert parse_time_range("08:15 tot 13:45") == ("08:15", "13:45")
+
+
+def test_parse_time_range_rejects_a_range_with_one_impossible_time():
+    assert parse_time_range("08:00 tot 25:00") is None
+
+
+def test_parse_adjusted_hours_keeps_the_minutes_of_a_full_range():
+    assert parse_adjusted_hours("geopend van 08:15 tot 13:45 uur") == (
+        "08:15",
+        "13:45",
+    )
+
+
+def test_parse_adjusted_hours_skips_a_range_with_an_impossible_time():
+    """A range that does not read as two times is no range at all."""
+
+    assert parse_adjusted_hours("geopend van 25 tot 14 uur") == (None, None)
+
+
+def test_parse_adjusted_hours_keeps_the_minutes_of_a_lone_time():
+    assert parse_adjusted_hours("vandaag geopend tot 13:30") == (None, "13:30")
