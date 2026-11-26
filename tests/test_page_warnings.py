@@ -41,7 +41,11 @@ def _page(*blocks: str, addresses: str = _ADDRESSES) -> str:
 
 @pytest.mark.parametrize(
     "fixture",
-    ["milieustraat_eindhoven", "milieustraat_eindhoven_nieuwe_tijden"],
+    [
+        "milieustraat_eindhoven",
+        "milieustraat_eindhoven_nieuwe_tijden",
+        "milieustraat_eindhoven_heropening",
+    ],
 )
 @pytest.mark.parametrize(
     "today",
@@ -120,6 +124,34 @@ def test_a_notice_in_a_block_of_a_new_kind_is_reported():
 
     assert CureParser(html).parse(_TODAY).warnings == [
         "Bericht niet verwerkt: Storing: milieustraat Acht dicht"
+    ]
+
+
+def test_a_closure_without_a_location_is_reported_not_applied_everywhere():
+    """Found by its "Datum sluiting" label alone, it names no location."""
+
+    html = _page(
+        '<div data-block="textAndMedia"><h2>Nieuws over de verbouwing</h2>'
+        "<p>We gaan verbouwen. Datum sluiting: 30-11-2025</p></div>"
+    )
+
+    data = CureParser(html).parse(_TODAY)
+
+    assert data.warnings == ["Mededeling niet leesbaar: Nieuws over de verbouwing"]
+    assert [n for n in data.notices if n.reason == "verbouwing"] == []
+
+
+def test_a_closure_inside_an_hours_announcement_is_reported():
+    """The block announces new hours, but its body also closes a location."""
+
+    html = _page(
+        "<div><h2>Vanaf 1 december nieuwe openingstijden</h2>"
+        "<p>De Lodewijkstraat is tot 1 december dicht wegens verbouwing.</p>"
+        "<p>Maandag tot en met zaterdag: 08:30 tot 17:00</p></div>"
+    )
+
+    assert CureParser(html).parse(_TODAY).warnings == [
+        "Bericht niet verwerkt: Vanaf 1 december nieuwe openingstijden"
     ]
 
 

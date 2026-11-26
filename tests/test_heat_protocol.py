@@ -194,3 +194,20 @@ def test_heat_protocol_unreadable_takes_vandaag_as_today():
 
 def test_heat_protocol_unreadable_ignores_other_news():
     assert heat_protocol_unreadable("Nieuwe milieupas", date(2026, 7, 10)) is False
+
+
+def test_an_archived_item_is_not_read_as_next_years_heat_protocol():
+    """Last July's news item, read in November, is not July next year."""
+
+    from custom_components.cure_afvalbeheer.parsing.heat_protocol import (
+        parse_heat_protocol_notice,
+    )
+
+    text = (
+        "Hitteprotocol! 13 tot en met 16 juli aangepaste openingstijden "
+        "(08:00 - 14:00) op onze milieustraten"
+    )
+
+    assert parse_heat_protocol_notice(text, date(2026, 11, 26), current=False) is None
+    # The same text as a current banner in July still reads.
+    assert parse_heat_protocol_notice(text, date(2026, 7, 12), current=False)

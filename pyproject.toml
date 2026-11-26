@@ -1,6 +1,6 @@
 [project]
 name = "ha-cure-afvalbeheer"
-version = "1.1.0"
+version = "1.1.1"
 description = "Home Assistant integration for Cure Afvalbeheer"
 requires-python = ">=3.13"
 dependencies = [

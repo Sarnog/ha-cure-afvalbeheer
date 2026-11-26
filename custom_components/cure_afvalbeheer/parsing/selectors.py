@@ -7,6 +7,8 @@ import re
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 
+from .dates import mentions_closure_date
+
 _HEADING_LEVELS = ("h1", "h2", "h3", "h4")
 
 # How the list of days off is headed. "Sluitingsdagen" and "Sluitingsdata"
@@ -215,6 +217,14 @@ def closure_notice_section(soup: BeautifulSoup) -> Tag | None:
             continue
 
         return heading.find_parent(["section", "div", "article"]) or heading.parent
+
+    # Last, a block whose heading has become something else but whose
+    # body still carries a "Datum sluiting" label. Cure did exactly that
+    # in November 2026: "Let op! Lodewijkstraat wordt verbouwd" became an
+    # announcement of the new hours, with the closure left in the body.
+    for block in soup.find_all(attrs={"data-block": "textAndMedia"}):
+        if block.find("h2") is not None and mentions_closure_date(_plain_text(block)):
+            return block
 
     return None
 

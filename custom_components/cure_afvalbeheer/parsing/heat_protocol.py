@@ -22,6 +22,11 @@ _TODAY_WORDING = re.compile(r"\bvandaag\b", re.IGNORECASE)
 # banner rather than as adjusted hours to apply.
 _MAX_HEAT_PROTOCOL_DAYS = 14
 
+# How far ahead a heat protocol is announced at most. It follows the
+# weather forecast, so days rather than weeks; a news item naming a period
+# further ahead than this is last year's, read as next year's.
+_MAX_ARCHIVE_LEAD_DAYS = 30
+
 
 def _heat_protocol_period(
     text: str, today: date, current: bool
@@ -95,6 +100,15 @@ def parse_heat_protocol_notice(
             starts,
             ends,
         )
+        return None
+
+    if not current and (starts or ends) - today > timedelta(
+        days=_MAX_ARCHIVE_LEAD_DAYS
+    ):
+        # An archived item names a period that has passed; without a
+        # year it reads as next year's, months ahead. No heat protocol
+        # is announced that far ahead, so it is not applied.
+        LOGGER.debug("Ignoring an archived hitteprotocol item: %s", heading)
         return None
 
     opens, closes = time_range

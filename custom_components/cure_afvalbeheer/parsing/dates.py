@@ -298,6 +298,24 @@ def parse_relative_date_range(
     return None, end
 
 
+def first_date(text: str, today: date) -> date | None:
+    """Return the first date in a text, in numbers or in words."""
+
+    numeric = NUMERIC_DATE.search(text)
+    written = SINGLE_DATE.search(text)
+
+    if numeric is not None and (written is None or numeric.start() < written.start()):
+        return parse_numeric_date(numeric.group(0))
+
+    return _first_written_date(text, today)
+
+
+def mentions_closure_date(text: str) -> bool:
+    """Return whether a text carries a "Datum sluiting" label."""
+
+    return _EXPLICIT_CLOSURE_DATE.search(text) is not None
+
+
 def parse_explicit_closure_date(text: str, today: date | None = None) -> date | None:
     """Extract the date behind a "Datum sluiting:" label.
 
