@@ -15,12 +15,13 @@ from .const import (
     DOMAIN,
     ISSUE_NO_LOCATIONS_FOUND,
     ISSUE_NO_OPENING_HOURS_FOUND,
+    ISSUE_UNREADABLE_WEBSITE_CONTENT,
     NAME,
 )
 from .exceptions import CureApiError
 from .logger import LOGGER
 from .models import CureData, Location
-from .parser import location_hint_for
+from .parsing import location_hint_for
 
 
 class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
@@ -52,7 +53,12 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
 
         return f"{issue}_{self.config_entry.entry_id}"
 
-    def _raise_issue(self, issue: str) -> None:
+    def _raise_issue(
+        self,
+        issue: str,
+        severity: ir.IssueSeverity = ir.IssueSeverity.ERROR,
+        **placeholders: str,
+    ) -> None:
         """Show a repair notification for this config entry."""
 
         ir.async_create_issue(
@@ -60,9 +66,9 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
             DOMAIN,
             self._issue_id(issue),
             is_fixable=False,
-            severity=ir.IssueSeverity.ERROR,
+            severity=severity,
             translation_key=issue,
-            translation_placeholders={"municipality": self.municipality},
+            translation_placeholders={"municipality": self.municipality} | placeholders,
         )
 
     def _clear_issue(self, issue: str) -> None:
@@ -88,7 +94,29 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
         except CureApiError as err:
             raise UpdateFailed(str(err)) from err
 
+        self._report_unreadable_content(data)
+
         return self._with_known_good_data(data)
+
+    def _report_unreadable_content(self, data: CureData) -> None:
+        """Show a repair notification while part of the page is unreadable.
+
+        The parser reads what it can and lists what it could not: opening
+        hours, a start date, a message ("Let op", heat protocol, a closing
+        day) or a location. Any of those means the sensors may not match
+        the website, which the user must be told rather than left to find
+        out at a closed gate.
+        """
+
+        if not data.warnings:
+            self._clear_issue(ISSUE_UNREADABLE_WEBSITE_CONTENT)
+            return
+
+        self._raise_issue(
+            ISSUE_UNREADABLE_WEBSITE_CONTENT,
+            ir.IssueSeverity.WARNING,
+            details="\n".join(f"- {warning}" for warning in data.warnings),
+        )
 
     def _with_known_good_data(self, data: CureData) -> CureData:
         """Fall back to the last good data for anything this fetch lost.
@@ -137,7 +165,11 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
                     notice.title, self.data.locations
                 )
 
-        return CureData(locations=self.data.locations, notices=data.notices)
+        return CureData(
+            locations=self.data.locations,
+            notices=data.notices,
+            warnings=data.warnings,
+        )
 
     def _with_opening_hours(self, data: CureData) -> CureData:
         """Handle a fetch whose locations came back without opening hours.
@@ -184,7 +216,12 @@ class CureDataUpdateCoordinator(DataUpdateCoordinator[CureData]):
                     name=location.name,
                     address=location.address,
                     hours=previous.hours,
+                    scheduled=previous.scheduled,
                 )
             )
 
-        return CureData(locations=locations, notices=data.notices)
+        return CureData(
+            locations=locations,
+            notices=data.notices,
+            warnings=data.warnings,
+        )

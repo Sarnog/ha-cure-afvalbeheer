@@ -1,6 +1,6 @@
 [project]
 name = "ha-cure-afvalbeheer"
-version = "1.0.0"
+version = "1.1.0"
 description = "Home Assistant integration for Cure Afvalbeheer"
 requires-python = ">=3.13"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "mutmut",
     "pytest-homeassistant-custom-component",
     "ruff",
 ]
@@ -47,3 +48,11 @@ pythonpath = [
 ]
 
 asyncio_mode = "auto"
+
+# Mutatietests: `mutmut run`, daarna `mutmut results`. Alleen de parser,
+# want daar zit de logica die de website moet lezen; de rest is
+# Home Assistant-lijm die de gewone tests al afdekken.
+[tool.mutmut]
+paths_to_mutate = ["custom_components/cure_afvalbeheer/parsing/"]
+tests_dir = ["tests/"]
+also_copy = ["tests/", "custom_components/"]

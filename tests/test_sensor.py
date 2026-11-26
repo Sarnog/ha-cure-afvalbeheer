@@ -111,6 +111,26 @@ def test_native_value_closed_outside_opening_hours():
     assert sensor.native_value == "closed"
 
 
+@freeze_time("2026-07-20 17:00:00")
+def test_native_value_closed_at_closing_time():
+    """At the closing minute itself the location counts as closed.
+
+    The "volgende gesloten" sensor already points at the next day then, so
+    reporting "open" here would contradict it for a whole minute.
+    """
+
+    sensor = _build_sensor()
+
+    assert sensor.native_value == "closed"
+
+
+@freeze_time("2026-07-20 08:30:00")
+def test_native_value_open_at_opening_time():
+    sensor = _build_sensor()
+
+    assert sensor.native_value == "open"
+
+
 @freeze_time("2026-07-19 10:00:00")
 def test_native_value_closed_on_holiday_sunday():
     sensor = _build_sensor()

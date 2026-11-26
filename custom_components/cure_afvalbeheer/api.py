@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
@@ -9,7 +10,7 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 from .const import BASE_URL
 from .exceptions import CureApiError
 from .models import CureData
-from .parser import CureParser
+from .parsing import CureParser
 
 # Cure's pages are static HTML of well under a megabyte. A request taking
 # longer than this is hanging rather than working, and holding the
@@ -51,11 +52,16 @@ class CureApiClient:
     async def fetch_milieustraat(
         self, municipality: str, today: date | None = None
     ) -> CureData:
-        """Fetch and parse the milieustraat page for a municipality."""
+        """Fetch and parse the milieustraat page for a municipality.
+
+        Parsing runs in a worker thread: BeautifulSoup walks the whole page
+        synchronously, and doing that on the event loop would stall every
+        other integration for as long as it takes.
+        """
 
         html = await self.fetch_html(f"/milieustraat/milieustraat-{municipality}/")
 
-        return self.parse_html(html, today)
+        return await asyncio.to_thread(self.parse_html, html, today)
 
     def parse_html(self, html: str, today: date | None = None) -> CureData:
         """Parse HTML into CureData.

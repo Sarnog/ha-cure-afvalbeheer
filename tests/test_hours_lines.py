@@ -1,13 +1,15 @@
 import pytest
 
 from custom_components.cure_afvalbeheer.exceptions import ParserError
-from custom_components.cure_afvalbeheer.parsers import (
+from custom_components.cure_afvalbeheer.parsing.hours_lines import (
+    _named_day,
     days_in_label,
     is_opening_hours_line,
+    mentions_hours,
     parse_opening_hours,
     parse_opening_hours_line,
-    parse_time_range,
 )
+from custom_components.cure_afvalbeheer.parsing.times import parse_time_range
 from custom_components.cure_afvalbeheer.weekday import Weekday
 
 _NBSP = "\xa0"
@@ -177,3 +179,53 @@ def test_parse_opening_hours_skips_a_line_it_cannot_read():
     )
 
     assert [hours.day for hours in result] == [Weekday.MONDAY, Weekday.SATURDAY]
+
+
+# --- Grenzen, gevonden met mutatietests (mutmut) ---------------------------
+
+
+def test_days_in_label_reads_an_abbreviation_with_a_dot():
+    assert days_in_label("Zat.") == [Weekday.SATURDAY]
+
+
+def test_named_day_ignores_a_trailing_hyphen():
+    assert _named_day("Zon-") is Weekday.SUNDAY
+
+
+def test_days_in_label_range_of_one_day():
+    assert days_in_label("maandag t/m maandag") == [Weekday.MONDAY]
+
+
+def test_days_in_label_rejects_a_range_with_an_unknown_end():
+    assert days_in_label("maandag t/m foo") == []
+
+
+def test_parse_opening_hours_line_value_starts_right_after_the_colon():
+    result = parse_opening_hours_line("Maandag:18:30 tot 20:00")
+
+    assert (result[0].opens, result[0].closes) == ("18:30", "20:00")
+
+
+def test_parse_opening_hours_line_names_what_it_could_not_read():
+    with pytest.raises(ParserError, match="Cannot parse opening hours line: Maandag"):
+        parse_opening_hours_line("Maandag")
+
+    with pytest.raises(ParserError, match="Unknown weekday: Foo"):
+        parse_opening_hours_line("Foo: 10:00 tot 12:00")
+
+    with pytest.raises(ParserError, match="Cannot parse opening hours line: Ma"):
+        parse_opening_hours_line("Maandag: 10:00 tot 25:00 open")
+
+
+def test_mentions_hours():
+    assert mentions_hours("Zondag gesloten") is True
+    assert mentions_hours("Maandag 10:00 - 12:00") is True
+    assert mentions_hours("Geen tijden hier") is False
+
+
+def test_parse_opening_hours_logs_the_line_it_skips(caplog):
+    parse_opening_hours(["Foo: 10:00 tot 12:00"])
+
+    assert "Skipping an unreadable opening hours line: Foo: 10:00 tot 12:00" in (
+        caplog.text
+    )

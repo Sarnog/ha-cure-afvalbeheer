@@ -91,6 +91,14 @@ er is geen los RSS-abonnement nodig.
   milieustraten zelf als voor de openingstijden: verdwijnen die uit de
   pagina, dan blijven de laatst bekende tijden staan in plaats van dat alles
   stilzwijgend op "gesloten" springt.
+- **Aangekondigde openingstijden** — kondigt Cure nieuwe tijden aan met een
+  ingangsdatum ("Vanaf dinsdag 1 december 2026: ..."), dan gelden die vanaf
+  die datum in de sensoren, ook in de vooruitblik. Kan een deel van de
+  openingstijden niet gelezen worden, of spreekt een aankondiging op de pagina
+  de openingstijden tegen, dan verschijnt een reparatie-melding die precies
+  noemt wat er niet klopt. Hetzelfde geldt voor mededelingen ("Let op",
+  hitteprotocol, sluitingsdagen) en locaties die niet te lezen zijn, ook als
+  Cure de indeling van de pagina verandert.
 - **Diagnostics** — een downloadbare dump van de config entry en de actuele
   coordinator-data, handig bij bugrapporten.
 - **Lokaal merklogo** — geserveerd via de eigen `brand/`-map (Home Assistant
@@ -102,8 +110,8 @@ wijzigingsgeschiedenis per versie.
 
 ## Installatie
 
-**Vereist:** Home Assistant **2024.6** of nieuwer. De integratie gebruikt
-`entry.runtime_data` met een getypeerde config entry, die sinds 2024.6 bestaat.
+**Vereist:** Home Assistant **2025.8** of nieuwer. De opties-flow gebruikt
+`OptionsFlowWithReload`, dat sinds 2025.8 in Home Assistant zit.
 
 Via HACS:
 
@@ -132,7 +140,7 @@ Elke milieustraat krijgt vijf sensoren:
   **`..._reden_morgen`** — leeg (`""`) als er geen afwijking is, anders de
   reden. Welke redenen er zijn, staat in [Redenen](#redenen).
 - **`sensor.<device>_<milieustraat>_volgende_open`** en
-  **`..._volgende_close`** — timestamp van de eerstvolgende keer dat de
+  **`..._volgende_gesloten`** — timestamp van de eerstvolgende keer dat de
   milieustraat open respectievelijk dicht gaat, binnen het ingestelde
   vooruitkijkvenster (anders `unknown`).
 
@@ -175,10 +183,10 @@ content: >-
   {#- Is de milieustraat op dit moment daadwerkelijk open? -#}
   {%- set nu_open = vandaag is not none and not vandaag.closed
         and vandaag.opens is not none and vandaag.closes is not none
-        and now() >= today_at(vandaag.opens) and now() <= today_at(vandaag.closes) -%}
+        and now() >= today_at(vandaag.opens) and now() < today_at(vandaag.closes) -%}
   {#- Sluitingstijd voorbij? Dan geldt vandaag als gesloten -#}
   {%- set na_sluiting = vandaag is not none and not vandaag.closed and
-  vandaag.closes is not none and now() > today_at(vandaag.closes) -%}
+  vandaag.closes is not none and now() >= today_at(vandaag.closes) -%}
   {#- Alleen de sensor die nu telt hoeft een geldig tijdstip te hebben; zo niet:
   regel weglaten -#}
   {%- set d_open = as_datetime(s_open, none) -%}
@@ -411,6 +419,7 @@ Gebruik:
 - Python 3.13
 - Ruff
 - pytest
+- mutmut (mutatietests op `parsing/`: `mutmut run`, daarna `mutmut results`)
 - Home Assistant development guidelines
 
 ## Licentie
@@ -518,6 +527,13 @@ separate RSS subscription is needed.
   stale. This covers both the recycling centres themselves and the opening
   hours: should those disappear from the page, the last known times stay in
   place instead of everything silently flipping to "closed".
+- **Announced opening hours** — when Cure announces new hours with a start
+  date ("Vanaf dinsdag 1 december 2026: ..."), the sensors use them from that
+  date on, forecast included. If part of the opening hours cannot be read, or
+  an announcement on the page contradicts them, a repair notification lists
+  exactly what does not add up. The same goes for notices ("Let op", heat
+  protocol, closing days) and locations that cannot be read, also when Cure
+  changes the page layout.
 - **Diagnostics** — a downloadable dump of the config entry and the current
   coordinator data, handy for bug reports.
 - **Local brand logo** — served via the integration's own `brand/` folder
@@ -529,8 +545,8 @@ per-version change history.
 
 ## Installation
 
-**Requires:** Home Assistant **2024.6** or newer. The integration uses
-`entry.runtime_data` with a typed config entry, which exists since 2024.6.
+**Requires:** Home Assistant **2025.8** or newer. The options flow uses
+`OptionsFlowWithReload`, which Home Assistant has shipped since 2025.8.
 
 Via HACS:
 
@@ -561,7 +577,7 @@ Each recycling centre gets five sensors:
   the reason. See [Reasons](#reasons) for the full list. These values are
   always Dutch, since that is what the integration itself produces.
 - **`sensor.<device>_<milieustraat>_volgende_open`** and
-  **`..._volgende_close`** — timestamp of the next time the recycling
+  **`..._volgende_gesloten`** — timestamp of the next time the recycling
   centre opens and closes respectively, within the configured forecast
   window (otherwise `unknown`).
 
@@ -605,10 +621,10 @@ content: >-
   {#- Is the recycling centre actually open right now? -#}
   {%- set now_open = today is not none and not today.closed
         and today.opens is not none and today.closes is not none
-        and now() >= today_at(today.opens) and now() <= today_at(today.closes) -%}
+        and now() >= today_at(today.opens) and now() < today_at(today.closes) -%}
   {#- Past closing time? Then today counts as closed -#}
   {%- set past_closing = today is not none and not today.closed and
-  today.closes is not none and now() > today_at(today.closes) -%}
+  today.closes is not none and now() >= today_at(today.closes) -%}
   {#- Only the sensor that currently matters needs a valid timestamp; skip the
   line if not -#}
   {%- set d_open = as_datetime(s_open, none) -%}
@@ -835,6 +851,7 @@ Uses:
 - Python 3.13
 - Ruff
 - pytest
+- mutmut (mutation tests on `parsing/`: `mutmut run`, then `mutmut results`)
 - Home Assistant development guidelines
 
 ## License

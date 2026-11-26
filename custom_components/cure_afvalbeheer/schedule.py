@@ -25,7 +25,15 @@ def hours_for_date(location: Location, day: date) -> OpeningHours | None:
 
     weekday = Weekday.from_date(day)
 
-    by_day = {hours.day: hours for hours in location.hours}
+    # The latest announced set that has started by this date wins; before
+    # the first one starts, the current regular hours apply.
+    regular = location.hours
+
+    for scheduled in location.scheduled:
+        if scheduled.starts <= day:
+            regular = scheduled.hours
+
+    by_day = {hours.day: hours for hours in regular}
 
     if weekday in by_day:
         return by_day[weekday]
@@ -34,22 +42,6 @@ def hours_for_date(location: Location, day: date) -> OpeningHours | None:
         return by_day.get(Weekday.HOLIDAY)
 
     return None
-
-
-def upcoming_hours(
-    location: Location,
-    start: date,
-    days: int = 6,
-) -> list[tuple[date, OpeningHours | None]]:
-    """Return the opening hours for a range of dates starting at start."""
-
-    result: list[tuple[date, OpeningHours | None]] = []
-
-    for offset in range(days):
-        day = start + timedelta(days=offset)
-        result.append((day, hours_for_date(location, day)))
-
-    return result
 
 
 def _notice_applies(notice: Notice, location: Location, day: date) -> bool:

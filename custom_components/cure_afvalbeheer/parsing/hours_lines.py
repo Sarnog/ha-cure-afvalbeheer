@@ -1,4 +1,4 @@
-"""Text parsers for Cure Afvalbeheer.
+"""The regular opening hours lines ("Maandag: 08:30 tot 17:00").
 
 The opening hours are the one part of the page written as a list of
 labelled lines ("Maandag: 08:30 tot 17:00"), so unlike the free-text
@@ -12,18 +12,11 @@ from __future__ import annotations
 
 import re
 
-from .exceptions import ParserError
-from .logger import LOGGER
-from .models import OpeningHours
-from .times import CLOCK_SEPARATOR, RANGE_SEPARATOR, hhmm
-from .weekday import Weekday
-
-_TIME_RANGE = re.compile(
-    rf"(?<!\d)(?P<open_hour>\d{{1,2}}){CLOCK_SEPARATOR}(?P<open_minute>\d{{2}})"
-    rf"\s*{RANGE_SEPARATOR}\s*"
-    rf"(?P<close_hour>\d{{1,2}}){CLOCK_SEPARATOR}(?P<close_minute>\d{{2}})(?!\d)",
-    re.IGNORECASE,
-)
+from ..exceptions import ParserError
+from ..logger import LOGGER
+from ..models import OpeningHours
+from ..weekday import Weekday
+from .times import RANGE_SEPARATOR, TIME_RANGE, parse_time_range
 
 # The days in the order a range runs through them. Sunday closes the week
 # here because Cure writes its week that way ("maandag t/m zondag").
@@ -71,6 +64,18 @@ _DAY_RANGE = re.compile(rf"\s*{RANGE_SEPARATOR}\s*", re.IGNORECASE)
 _DAY_LIST = re.compile(r"\s*(?:,|&|\ben\b|/)\s*", re.IGNORECASE)
 
 _LABEL_NOISE = re.compile(r"[. ]+")
+
+# Words that can sit between the days and the times without saying
+# anything about either: "Maandag tot en met vrijdag geopend van 10:00 tot
+# 17:00 uur", "Zaterdag zijn we open van ...", "Zondag is de milieustraat
+# gesloten". They are cut off the end of the label so only the days remain.
+_LABEL_FILLER = re.compile(
+    r"(?:\s+(?:(?:zijn|is)\s+(?:we|wij|de\s+milieustraat|de\s+milieustraten"
+    r"|de\s+locatie|het)|zijn|is))?"
+    r"(?:\s+(?:geopend|open|opent))?"
+    r"(?:\s+(?:van(?:af)?|om))?\s*$",
+    re.IGNORECASE,
+)
 
 
 def _normalise(text: str) -> str:
@@ -134,23 +139,6 @@ def days_in_label(label: str) -> list[Weekday]:
     return days
 
 
-def parse_time_range(value: str) -> tuple[str, str] | None:
-    """Extract an opening and closing time from an opening hours value."""
-
-    match = _TIME_RANGE.search(value)
-
-    if match is None:
-        return None
-
-    opens = hhmm(match.group("open_hour"), match.group("open_minute"))
-    closes = hhmm(match.group("close_hour"), match.group("close_minute"))
-
-    if opens is None or closes is None:
-        return None
-
-    return opens, closes
-
-
 def _split_line(line: str) -> tuple[str, str] | None:
     """Split an opening hours line into its label and its value.
 
@@ -162,7 +150,7 @@ def _split_line(line: str) -> tuple[str, str] | None:
     still wins as the separator, so none of the label is carried into it.
     """
 
-    anchor = _TIME_RANGE.search(line) or _CLOSED_WORD.search(line)
+    anchor = TIME_RANGE.search(line) or _CLOSED_WORD.search(line)
 
     if anchor is None:
         return None
@@ -170,9 +158,15 @@ def _split_line(line: str) -> tuple[str, str] | None:
     colon = line.find(":")
 
     if colon != -1 and colon < anchor.start():
-        return line[:colon].strip(), line[colon + 1 :].strip()
+        label, value = line[:colon], line[colon + 1 :]
+    else:
+        label, value = line[: anchor.start()], line[anchor.start() :]
 
-    return line[: anchor.start()].strip(" :-"), line[anchor.start() :].strip()
+    # Cut connecting words ("geopend van") off the label, then any
+    # punctuation that was standing in front of them.
+    label = _LABEL_FILLER.sub("", label.strip(" :-")).strip(" :-")
+
+    return label, value.strip()
 
 
 def parse_opening_hours_line(line: str) -> list[OpeningHours]:
@@ -253,3 +247,15 @@ def is_opening_hours_line(line: str) -> bool:
         return True
 
     return parse_time_range(value) is not None
+
+
+def mentions_hours(line: str) -> bool:
+    """Return whether a line says something about times or being closed.
+
+    Used to spot a line in the opening hours section that was not read:
+    one carrying a time range or a word meaning closed is meant as opening
+    hours, so dropping it silently could leave the sensors disagreeing
+    with the website without anyone noticing.
+    """
+
+    return bool(TIME_RANGE.search(line) or _CLOSED_WORD.search(line))

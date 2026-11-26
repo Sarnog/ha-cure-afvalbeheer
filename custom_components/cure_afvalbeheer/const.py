@@ -23,3 +23,4 @@ DEFAULT_UPDATE_INTERVAL_MINUTES = 60
 
 ISSUE_NO_LOCATIONS_FOUND = "no_locations_found"
 ISSUE_NO_OPENING_HOURS_FOUND = "no_opening_hours_found"
+ISSUE_UNREADABLE_WEBSITE_CONTENT = "unreadable_website_content"

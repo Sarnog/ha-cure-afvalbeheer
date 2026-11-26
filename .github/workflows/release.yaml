@@ -1,0 +1,28 @@
+name: Release
+
+# Een tag als v1.1.0 pushen maakt de GitHub-release aan, met de tekst uit
+# .github/release-notes/<tag>.md. Zo staan de release notes in de repository
+# en gaan ze mee door review, net als de code.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v4"
+
+      - name: Release aanmaken
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          notes=".github/release-notes/${TAG}.md"
+          title="$(head -n 1 ".github/release-notes/${TAG}.title")"
+          gh release create "$TAG" --title "$title" --notes-file "$notes" --verify-tag

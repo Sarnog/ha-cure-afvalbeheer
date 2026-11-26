@@ -1,7 +1,7 @@
 import pytest
 from bs4 import BeautifulSoup
 
-from custom_components.cure_afvalbeheer import selectors
+from custom_components.cure_afvalbeheer.parsing import selectors
 
 
 def _lines(blocks: list[tuple[str, list[str]]]) -> list[str]:
@@ -504,3 +504,182 @@ def test_closure_notice_section_however_the_heading_is_punctuated(heading):
     )
 
     assert selectors.closure_notice_section(soup) is not None
+
+
+# --- Grenzen, gevonden met mutatietests (mutmut) ---------------------------
+
+
+def _soup(html: str) -> BeautifulSoup:
+    """Parse a snippet the way the integration parses a page."""
+
+    return BeautifulSoup(html, "html.parser")
+
+
+_NEWS_BLOCK = (
+    '<div data-block="newsBlock"><h2>Let op! Gewijzigde openingstijden</h2>'
+    "<ul><li><p>Hitteprotocol vandaag</p></li></ul></div>"
+)
+
+
+def test_blocks_under_heading_leaves_a_starting_heading_out_by_default():
+    soup = _soup(
+        "<h2>Openingstijden</h2><p>Maandag: 08:30 tot 17:00</p>"
+        "<h2>Openingstijden vanaf 1 december</h2><p>Maandag: 10:00 tot 17:00</p>"
+    )
+
+    assert [h for h, _ in selectors.blocks_under_heading(soup, "Openingstijden")] == [
+        "Openingstijden"
+    ]
+    assert (
+        len(selectors.blocks_under_heading(soup, "Openingstijden", starting_too=True))
+        == 2
+    )
+
+
+def test_blocks_under_heading_skips_the_news_block():
+    soup = _soup(
+        '<div data-block="newsBlock"><h2>Openingstijden</h2><p>nieuws</p></div>'
+        "<h2>Openingstijden</h2><p>Maandag: 08:30 tot 17:00</p>"
+    )
+
+    assert selectors.blocks_under_heading(soup, "Openingstijden") == [
+        ("Openingstijden", ["Maandag: 08:30 tot 17:00"])
+    ]
+
+
+def test_blocks_under_heading_falls_back_to_a_heading_containing_the_text():
+    soup = _soup(
+        "<h2>Nieuws</h2><p>iets</p>"
+        "<h2>Afwijkende openingstijden</h2><p>Maandag: 10:00 tot 12:00</p>"
+    )
+
+    assert selectors.blocks_under_heading(soup, "Openingstijden") == [
+        ("Afwijkende openingstijden", ["Maandag: 10:00 tot 12:00"])
+    ]
+
+
+def test_blocks_under_heading_reads_a_list_item_once():
+    soup = _soup(
+        "<h2>Openingstijden</h2><ul><li><p>Maandag: 08:30 tot 17:00</p></li></ul>"
+    )
+
+    assert _lines(selectors.blocks_under_heading(soup, "Openingstijden")) == [
+        "Maandag: 08:30 tot 17:00"
+    ]
+
+
+def test_blocks_under_heading_reads_past_a_wrapped_heading():
+    """A heading in a wrapper of its own has no content siblings."""
+
+    soup = _soup(
+        "<div><h2>Openingstijden</h2></div>"
+        "<p>Maandag: 08:30 tot 17:00</p><h2>Adres</h2><p>Straat 1</p>"
+    )
+
+    assert _lines(selectors.blocks_under_heading(soup, "Openingstijden")) == [
+        "Maandag: 08:30 tot 17:00"
+    ]
+
+
+def test_location_name_is_stripped():
+    assert selectors.location_name(_soup("<h1> Milieustraat Acht </h1>")) == (
+        "Milieustraat Acht"
+    )
+    assert selectors.location_name(_soup("<p>geen kop</p>")) == ""
+
+
+def test_news_item_texts_only_reads_the_news_block():
+    soup = _soup(
+        "<ul><li><p>Menu-item</p></li></ul>"
+        '<div data-block="newsBlock"><h2>Nieuws</h2><ul>'
+        "<li><span>zonder titel</span></li><li><p>Hitteprotocol</p></li>"
+        "</ul></div>"
+    )
+
+    assert selectors.news_item_texts(soup) == ["Hitteprotocol"]
+
+
+def test_closure_notice_section_prefers_the_tagged_block():
+    soup = _soup(
+        '<section data-block="textAndMedia"><p>intro</p>'
+        "<div><h2>Let op! Sluiting</h2></div></section>"
+    )
+
+    assert selectors.closure_notice_section(soup).name == "section"
+
+
+def test_closure_notice_section_looks_past_a_block_without_heading():
+    soup = _soup(
+        '<section data-block="textAndMedia"><p>Inpaktips</p></section>'
+        '<section data-block="textAndMedia" id="let-op">'
+        "<div><h2>Let op! Sluiting</h2></div></section>"
+    )
+
+    assert selectors.closure_notice_section(soup).get("id") == "let-op"
+
+
+def test_closure_notice_section_fallback_skips_other_headings_and_news():
+    soup = _soup(
+        _NEWS_BLOCK
+        + "<section><h2>Inpaktips</h2></section>"
+        + '<section id="let-op"><header><h2>Let op! Sluiting</h2></header></section>'
+    )
+
+    assert selectors.closure_notice_section(soup).get("id") == "let-op"
+
+
+@pytest.mark.parametrize("container", ["section", "div", "article"])
+def test_closure_notice_section_fallback_returns_the_container(container):
+    soup = _soup(
+        f'<{container} id="let-op"><header><h2>Let op! Sluiting</h2></header>'
+        f"</{container}>"
+    )
+
+    assert selectors.closure_notice_section(soup).get("id") == "let-op"
+
+
+def test_plain_text_joins_and_trims_every_piece():
+    heading = _soup("<h2> Let\xa0<b>op!</b> <span>Sluiting </span></h2>").h2
+
+    assert selectors._plain_text(heading) == "Let op! Sluiting"
+
+
+def test_lines_of_skips_comments():
+    paragraph = _soup("<p>Maandag<!-- verborgen --> 10:00 - 12:00</p>").p
+
+    assert selectors._lines_of(paragraph) == ["Maandag 10:00 - 12:00"]
+
+
+def test_announcement_blocks_skip_regular_hours_and_news():
+    soup = _soup(
+        _NEWS_BLOCK
+        + "<h2>Openingstijden</h2><p>Maandag: 08:30 tot 17:00</p>"
+        + "<h2>Adres</h2><p>Straat 1</p>"
+        + "<h2>Vanaf 1 december geopend van 10:00 tot 17:00</h2><p>Alle dagen</p>"
+    )
+
+    assert selectors.announcement_blocks(soup) == [
+        ("Vanaf 1 december geopend van 10:00 tot 17:00", ["Alle dagen"])
+    ]
+
+
+def test_blocks_with_heading_skips_news_footer_and_empty_headings():
+    soup = _soup(
+        _NEWS_BLOCK
+        + '<div data-block="footerContent"><h3>Contact</h3></div>'
+        + "<footer><h3>Links</h3></footer>"
+        + "<h2> </h2>"
+        + "<h2>Let op!</h2><p>Gesloten op 1 mei</p>"
+    )
+
+    assert selectors.blocks_with_heading(soup) == [("Let op!", ["Gesloten op 1 mei"])]
+
+
+def test_plain_text_replaces_an_inner_non_breaking_space():
+    assert selectors._plain_text(_soup("<h2>Let\xa0op!</h2>").h2) == "Let op!"
+
+
+def test_lines_of_joins_the_pieces_of_one_line_with_spaces():
+    paragraph = _soup("<p>Maandag<b>10:00</b>-12:00<br>Dinsdag</p>").p
+
+    assert selectors._lines_of(paragraph) == ["Maandag 10:00 -12:00", "Dinsdag"]

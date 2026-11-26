@@ -1,61 +1,14 @@
 from datetime import date
-from pathlib import Path
 
-from custom_components.cure_afvalbeheer.models import Location
-from custom_components.cure_afvalbeheer.parser import CureParser, location_hint_for
+from custom_components.cure_afvalbeheer.models import CureData, Location
+from custom_components.cure_afvalbeheer.parsing.locations import location_hint_for
+from custom_components.cure_afvalbeheer.parsing.page import CureParser
 from custom_components.cure_afvalbeheer.weekday import Weekday
-
-
-def test_page_title():
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
-
-    parser = CureParser(html)
-
-    assert parser.page_title() == "Milieustraat Eindhoven"
-
-
-def test_headings():
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
-
-    parser = CureParser(html)
-
-    headings = parser.headings()
-
-    assert len(headings) > 5
-
-
-def test_opening_hours_lines():
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
-
-    parser = CureParser(html)
-
-    lines = parser.opening_hours_lines()
-
-    assert len(lines) == 7
-    assert lines[0].startswith("Maandag")
-    assert lines[-1].startswith("Zon")
-
-
-def test_location_name():
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
-
-    parser = CureParser(html)
-
-    assert parser.location_name() == "Milieustraat Eindhoven"
+from tests.hulp import read_fixture
 
 
 def test_parse_locations():
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     parser = CureParser(html)
 
@@ -74,9 +27,7 @@ def test_parse_locations():
 
 
 def test_location_addresses():
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     parser = CureParser(html)
 
@@ -125,9 +76,7 @@ def test_notices_finds_heat_protocol_and_scoped_closure():
     """The Eindhoven fixture contains both a site-wide heat protocol
     banner and a closure notice naming Lodewijkstraat specifically."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     parser = CureParser(html)
     locations = parser.parse_locations()
@@ -148,9 +97,7 @@ def test_notices_finds_heat_protocol_and_scoped_closure():
 def test_heat_protocol_notice_from_the_news_block_heading():
     """The heading Cure puts in front of every visitor is read first."""
 
-    html = Path("tests/fixtures/news_block_heat_protocol.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("news_block_heat_protocol.html")
 
     notice = CureParser(html).heat_protocol_notice(date(2026, 8, 14))
 
@@ -166,14 +113,10 @@ def test_heat_protocol_notice_falls_back_to_the_news_items():
     """When the editors word the heading in a way that cannot be read, the
     news item it links to still spells the period out."""
 
-    html = (
-        Path("tests/fixtures/news_block_heat_protocol.html")
-        .read_text(encoding="utf-8")
-        .replace(
-            "Let op! Hitteprotocol van 13 t/m 15 Augustus! Gewijzigde "
-            "openingstijden milieustraten van 08:00 tot 14:00.",
-            "Let op! Hitteprotocol deze week!",
-        )
+    html = read_fixture("news_block_heat_protocol.html").replace(
+        "Let op! Hitteprotocol van 13 t/m 15 Augustus! Gewijzigde "
+        "openingstijden milieustraten van 08:00 tot 14:00.",
+        "Let op! Hitteprotocol deze week!",
     )
 
     notice = CureParser(html).heat_protocol_notice(date(2026, 8, 14))
@@ -186,9 +129,7 @@ def test_heat_protocol_notice_falls_back_to_the_news_items():
 
 
 def test_heat_protocol_notice_returns_none_without_one():
-    html = Path("tests/fixtures/news_block_heat_protocol.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("news_block_heat_protocol.html")
 
     parser = CureParser(html.replace("Hitteprotocol", "Zomerweetje"))
 
@@ -198,9 +139,7 @@ def test_heat_protocol_notice_returns_none_without_one():
 def test_notices_finds_the_closing_days():
     """The closing days apply to every recycling centre on the page."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     parser = CureParser(html)
     locations = parser.parse_locations()
@@ -319,8 +258,7 @@ def test_heat_protocol_notice_does_not_read_vandaag_from_a_news_item():
     """The banner heading is current; the archive below it is not."""
 
     html = (
-        Path("tests/fixtures/news_block_heat_protocol.html")
-        .read_text(encoding="utf-8")
+        read_fixture("news_block_heat_protocol.html")
         .replace(
             "Let op! Hitteprotocol van 13 t/m 15 Augustus! Gewijzigde "
             "openingstijden milieustraten van 08:00 tot 14:00.",
@@ -373,3 +311,34 @@ def test_opening_hours_falls_back_to_the_first_block_it_cannot_place(caplog):
 
     assert (hours[0].opens, hours[0].closes) == ("09:00", "16:00")
     assert "could not tell which one applies today" in caplog.text
+
+
+def test_parse_returns_cure_data():
+    html = read_fixture("milieustraat_eindhoven.html")
+
+    parser = CureParser(html)
+
+    result = parser.parse()
+
+    assert isinstance(result, CureData)
+
+    assert len(result.locations) == 2
+
+    assert result.locations[0].name == "Milieustraat Acht"
+    assert result.locations[0].address == "Achtseweg Noord 41 5651 GG Eindhoven"
+
+    assert result.locations[1].name == "Milieustraat Lodewijkstraat"
+    assert result.locations[1].address == "Lodewijkstraat 9 5652 AC Eindhoven"
+
+
+def test_opening_hours():
+    html = read_fixture("milieustraat_eindhoven.html")
+
+    parser = CureParser(html)
+
+    hours = parser.opening_hours()
+
+    assert len(hours) == 7
+    assert hours[0].day is Weekday.MONDAY
+    assert hours[-2].day is Weekday.SATURDAY
+    assert hours[-1].day is Weekday.HOLIDAY

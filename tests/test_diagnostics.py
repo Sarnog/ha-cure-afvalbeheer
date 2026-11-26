@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -7,6 +6,7 @@ from custom_components.cure_afvalbeheer.const import CONF_MUNICIPALITY, DOMAIN
 from custom_components.cure_afvalbeheer.diagnostics import (
     async_get_config_entry_diagnostics,
 )
+from tests.hulp import read_fixture
 
 
 async def test_diagnostics_serialises_locations_and_notices(
@@ -14,9 +14,7 @@ async def test_diagnostics_serialises_locations_and_notices(
 ) -> None:
     """Test that diagnostics return a plain, serialisable data dump."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
     entry.add_to_hass(hass)

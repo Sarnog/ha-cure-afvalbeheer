@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.config_entries import SOURCE_RECONFIGURE, SOURCE_USER
@@ -12,6 +11,7 @@ from custom_components.cure_afvalbeheer.const import (
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
 )
+from tests.hulp import read_fixture
 
 
 async def test_user_flow_creates_entry_per_municipality(
@@ -89,9 +89,7 @@ async def test_options_flow_updates_lookahead_days(
 ) -> None:
     """Test that the options flow updates and persists lookahead_days."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
     entry.add_to_hass(hass)
@@ -135,9 +133,7 @@ async def test_reconfigure_same_municipality_applies_without_confirmation(
 ) -> None:
     """Reconfiguring to the current municipality is applied directly."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
     entry.add_to_hass(hass)
@@ -174,9 +170,7 @@ async def test_reconfigure_different_municipality_requires_confirmation(
 ) -> None:
     """Switching to a different municipality asks for confirmation first."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     entry = MockConfigEntry(
         domain=DOMAIN, unique_id="eindhoven", data={CONF_MUNICIPALITY: "eindhoven"}

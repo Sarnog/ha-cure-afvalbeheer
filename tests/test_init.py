@@ -1,4 +1,3 @@
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.helpers import entity_registry as er
@@ -11,14 +10,13 @@ from custom_components.cure_afvalbeheer.const import (
     DOMAIN,
 )
 from custom_components.cure_afvalbeheer.models import CureData, Location
+from tests.hulp import read_fixture
 
 
 async def test_setup_entry_creates_sensors(hass, enable_custom_integrations) -> None:
     """Test that setting up the config entry wires up working sensors."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
     entry.add_to_hass(hass)
@@ -79,9 +77,7 @@ async def test_new_location_gets_entities_without_restart(
 ) -> None:
     """A location added later (no restart) should still get its entities."""
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_MUNICIPALITY: "eindhoven"})
     entry.add_to_hass(hass)
@@ -132,9 +128,7 @@ async def test_setup_survives_float_options_from_before_the_fix(
     the user having to resubmit the options form.
     """
 
-    html = Path("tests/fixtures/milieustraat_eindhoven.html").read_text(
-        encoding="utf-8"
-    )
+    html = read_fixture("milieustraat_eindhoven.html")
 
     entry = MockConfigEntry(
         domain=DOMAIN,
