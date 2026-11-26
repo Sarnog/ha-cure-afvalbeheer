@@ -100,6 +100,9 @@ def test_the_reopening_date_ends_the_closure():
         "Vanaf 1 december 2026 is de Lodewijkstraat weer open.",
         "Per 01-12-2026 is de Lodewijkstraat weer geopend.",
         "De Lodewijkstraat is vanaf dinsdag 1 december weer toegankelijk.",
+        "Vanaf 01.12.2026 is de Lodewijkstraat weer open.",
+        "De Lodewijkstraat heropent op 1 december 2026.",
+        "Op dinsdag 01-12-2026 gaat de Lodewijkstraat weer open.",
     ],
 )
 def test_other_wordings_of_the_reopening(sentence):

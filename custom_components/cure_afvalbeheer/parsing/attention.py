@@ -15,6 +15,7 @@ from datetime import date, timedelta
 from ..logger import LOGGER
 from ..models import Notice
 from .dates import (
+    first_date,
     parse_dated_list,
     parse_effective_from,
     parse_explicit_closure_date,
@@ -129,7 +130,13 @@ def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | 
         # visitors to, or to the hours after it reopens, so they are not
         # read as this one's hours.
         reopening = reopening_sentence(body_text)
-        reopens = parse_effective_from(reopening, today) if reopening else None
+        # "Vanaf 1 december ... weer open" first; failing that the one
+        # date in the sentence ("heropent op 1 december 2026").
+        reopens = (
+            parse_effective_from(reopening, today) or first_date(reopening, today)
+            if reopening
+            else None
+        )
 
         if reopening and reopens is None:
             # The notice says when it opens again, but not in a way that
