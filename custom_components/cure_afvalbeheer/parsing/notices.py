@@ -14,26 +14,52 @@ from bs4 import BeautifulSoup
 
 from ..models import Location, Notice
 from . import selectors
-from .attention import mentions_deviation, parse_closure_notice
+from .attention import (
+    is_attention_heading,
+    mentions_deviation,
+    parse_closure_notice,
+)
 from .closing_days import parse_closing_days
 from .dates import mentions_date
 from .heat_protocol import heat_protocol_unreadable, parse_heat_protocol_notice
 from .locations import location_hint_for
 
-# Headings the safety net leaves alone because another reader covers them:
-# the regular hours, announcements checked against those, the address
-# section and the house rules.
-_COVERED_HEADING = re.compile(
-    r"^(?:openingstijden|adres|locatie|plattegrond|attention)"
-    r"|openingstijd|geopend|\bopen\b",
+# Headings the safety net leaves alone because another reader covers
+# them in full: the regular hours, the address section, the site maps and
+# the English copy of a notice.
+_READ_ELSEWHERE = re.compile(
+    r"^(?:openingstijden|adres|locatie|plattegrond|attention)", re.IGNORECASE
+)
+
+# Headings announcing new hours. Those hours are checked against the
+# regular ones, but nothing else in the block is: a closure mentioned in
+# its body would go unread.
+_HOURS_ANNOUNCEMENT = re.compile(r"openingstijd|geopend|\bopen\b", re.IGNORECASE)
+
+# What a body says when a location is shut for a while, as opposed to the
+# "Zondag gesloten" every list of hours ends with.
+_CLOSURE_WORDING = re.compile(
+    r"verbouw|sluiting|toegankelijk|heropen|\bdicht\b|storing|werkzaamheden",
     re.IGNORECASE,
 )
 
 
-def _covered_elsewhere(heading: str) -> bool:
-    """Return whether another part of the parser already reads this heading."""
+def _unread_message(heading: str, lines: list[str]) -> bool:
+    """Return whether a block nobody reads talks about a dated change.
 
-    return _COVERED_HEADING.search(heading) is not None
+    A heading announcing new hours only counts when its body talks about
+    a closure: the hours themselves are read already.
+    """
+
+    if _READ_ELSEWHERE.search(heading):
+        return False
+
+    if _HOURS_ANNOUNCEMENT.search(heading):
+        flagged = _CLOSURE_WORDING.search(" ".join(lines)) is not None
+    else:
+        flagged = mentions_deviation(heading)
+
+    return flagged and mentions_date(" ".join([heading, *lines]))
 
 
 def heat_protocol_notice(soup: BeautifulSoup, today: date) -> Notice | None:
@@ -125,13 +151,23 @@ def read_notices(
             closure = parse_closure_notice(closure_heading_text, body_text, today)
 
             if closure is not None:
+                # The heading names the location; failing that, the
+                # sentence the title was taken from.
                 closure.location_hint = location_hint_for(
                     closure_heading_text, locations
-                )
-                result.append(closure)
+                ) or location_hint_for(closure.title, locations)
+
+            if closure is None or (
+                closure.location_hint is None
+                and not is_attention_heading(closure_heading_text)
+            ):
+                # A closure found only by its "Datum sluiting" label, with
+                # no location named, would shut every location on the
+                # page: reported instead.
+                warnings.append(f"Mededeling niet leesbaar: {closure_heading_text}")
 
             else:
-                warnings.append(f"Mededeling niet leesbaar: {closure_heading_text}")
+                result.append(closure)
 
     # No location hint: the closing days are listed once per
     # municipality page and apply to every recycling centre on it.
@@ -145,12 +181,7 @@ def read_notices(
                 warnings.append(f"Sluitingsdag niet leesbaar: {line}")
 
     for heading, lines in selectors.blocks_with_heading(soup):
-        if heading in handled or _covered_elsewhere(heading):
-            continue
-
-        text = " ".join([heading, *lines])
-
-        if mentions_deviation(heading) and mentions_date(text):
+        if heading not in handled and _unread_message(heading, lines):
             warnings.append(f"Bericht niet verwerkt: {heading}")
 
     return result, warnings

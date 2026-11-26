@@ -298,6 +298,12 @@ def parse_relative_date_range(
     return None, end
 
 
+def mentions_closure_date(text: str) -> bool:
+    """Return whether a text carries a "Datum sluiting" label."""
+
+    return _EXPLICIT_CLOSURE_DATE.search(text) is not None
+
+
 def parse_explicit_closure_date(text: str, today: date | None = None) -> date | None:
     """Extract the date behind a "Datum sluiting:" label.
 

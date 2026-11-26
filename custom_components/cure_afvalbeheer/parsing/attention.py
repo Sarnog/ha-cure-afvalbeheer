@@ -10,12 +10,13 @@ announcement is skipped instead of producing a wrong result.
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from ..logger import LOGGER
 from ..models import Notice
 from .dates import (
     parse_dated_list,
+    parse_effective_from,
     parse_explicit_closure_date,
     parse_relative_date_range,
 )
@@ -24,6 +25,17 @@ from .times import parse_adjusted_hours
 # How an active notice announces itself, the punctuation behind it being
 # Cure's to vary ("Let op!", "Let op:", "Let op,").
 _ATTENTION_WORDING = re.compile(r"^\s*let\s*op\b", re.IGNORECASE)
+
+# How Cure words the end of a closure: the location being open to the
+# public again ("Vanaf 01 december 2026 is de Lodewijkstraat weer
+# toegankelijk voor publiek") or reopening outright.
+_REOPENING_WORDING = re.compile(
+    r"\bweer\s+(?:open|geopend|toegankelijk|bereikbaar)\b|\bheropen",
+    re.IGNORECASE,
+)
+
+# Where one sentence ends and the next begins.
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
 
 # Words for the location being shut, as opposed to a time it shuts at:
 # "gesloten" describes the state it is in, "sluiten om 15:00" a time it
@@ -65,11 +77,30 @@ def _attention_reason(text: str, *, closed: bool) -> str:
     return "sluiting" if closed else "aangepaste openingstijden"
 
 
+def is_attention_heading(heading: str) -> bool:
+    """Return whether a heading opens with "Let op", in any punctuation."""
+
+    return _ATTENTION_WORDING.match(heading) is not None
+
+
+def reopening_sentence(body_text: str) -> str | None:
+    """Return the sentence saying a closed location opens again, if any."""
+
+    for sentence in _SENTENCE_BREAK.split(body_text):
+        if _REOPENING_WORDING.search(sentence):
+            return sentence.strip()
+
+    return None
+
+
 def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | None:
     """Parse a municipality-specific "Let op" notice, if present.
 
     The heading has to open with "Let op", whatever punctuation Cure puts
-    behind it. What the body then says about dates is read in three ways,
+    behind it, or the body has to carry a "Datum sluiting" label: in
+    November 2026 Cure rewrote the heading of the Lodewijkstraat notice
+    into an announcement of new hours, leaving the label as the only sign
+    of the closure. What the body then says about dates is read in three ways,
     in descending order of how definite it is: the date behind a "Datum
     sluiting" label, a list of dated entries, or a period the notice runs
     for. A body naming none of those yields nothing at all.
@@ -83,22 +114,37 @@ def parse_closure_notice(heading: str, body_text: str, today: date) -> Notice | 
     it closes at.
     """
 
-    if not _ATTENTION_WORDING.match(heading):
+    attention = is_attention_heading(heading)
+
+    explicit_date = parse_explicit_closure_date(body_text, today)
+
+    if not attention and explicit_date is None:
         return None
 
     combined_text = f"{heading} {body_text}"
 
-    explicit_date = parse_explicit_closure_date(body_text, today)
-
     if explicit_date is not None:
         # "Datum sluiting" states a closure in so many words. Any times
         # the body mentions belong to the alternative location it points
-        # visitors to, so they are not read as this one's hours.
+        # visitors to, or to the hours after it reopens, so they are not
+        # read as this one's hours.
+        reopening = reopening_sentence(body_text)
+        reopens = parse_effective_from(reopening, today) if reopening else None
+
+        if reopening and reopens is None:
+            # The notice says when it opens again, but not in a way that
+            # reads: reported rather than kept closed for good.
+            LOGGER.debug("Could not read the reopening date in: %s", reopening)
+            return None
+
         return Notice(
             reason=_attention_reason(combined_text, closed=True),
-            title=heading,
+            # A heading that announces something else (new hours, say)
+            # makes a poor title; the reopening sentence says what is up.
+            title=heading if attention or reopening is None else reopening,
             closed=True,
             starts=explicit_date if explicit_date > today else None,
+            ends=reopens - timedelta(days=1) if reopens else None,
         )
 
     opens, closes = parse_adjusted_hours(body_text)
